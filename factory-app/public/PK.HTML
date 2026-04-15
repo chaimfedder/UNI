@@ -118,6 +118,46 @@
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     STARTUP MODAL — בחירת אריזה בפתיחה
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div id="startupModal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4">
+    <div class="text-center mb-5">
+      <div class="text-4xl mb-1">📦</div>
+      <h2 class="text-2xl font-bold text-blue-700">Packing System</h2>
+      <p class="text-gray-400 text-sm mt-1">Select a packing to continue, or create a new one</p>
+    </div>
+
+    <!-- Existing packings -->
+    <div class="mb-4">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Existing Packings</p>
+      <div id="startupPackingsList" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+        <p class="text-gray-400 text-sm text-center py-6">Loading...</p>
+      </div>
+    </div>
+
+    <!-- New packing -->
+    <div class="border-t border-gray-100 pt-4">
+      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">New Packing</p>
+      <div class="flex gap-2">
+        <input id="newPackingInput" type="number" min="1" placeholder="Packing number..."
+          class="flex-1 p-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        <button onclick="StartupManager.createNew()"
+          class="px-5 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+          Create
+        </button>
+      </div>
+      <div id="startupError" class="hidden mt-2 text-red-500 text-sm text-center"></div>
+    </div>
+
+    <!-- Offline warning -->
+    <div id="startupOfflineWarning" class="hidden mt-3 text-center text-orange-500 text-xs">
+      ⚡ Offline — showing cached data
+    </div>
+  </div>
+</div>
     <div class="max-w-4xl mx-auto p-6 space-y-6">
         <!-- Packing Summary -->
         <div class="bg-white shadow-lg rounded-xl p-6">
@@ -142,8 +182,13 @@
                     </button>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 flex-wrap">
                 <p class="text-lg text-gray-600">Total Boxes: <span id="totalBoxes" class="font-semibold">0</span></p>
+                <!-- Offline indicator -->
+                <div id="offlineIndicator" class="hidden items-center gap-1.5 px-3 py-1 bg-orange-100 border border-orange-300 rounded-full text-orange-700 text-sm font-medium">
+                    <span>⚡</span><span>Offline — local backup active</span>
+                    <span id="offlineSavedAt" class="text-orange-500 text-xs"></span>
+                </div>
                 <button id="showMissingButton" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md text-sm">
                     Show Missing Boxes
                 </button>
@@ -458,10 +503,14 @@ const FirebaseSync = {
         try {
             const ref = _db.collection('packingLists').doc(String(packingNumber));
             const snap = await ref.get();
+            const totalBoxes = typeof State !== 'undefined'
+                ? State.allBoxes.filter(b => String(b.packingNumber) === String(packingNumber)).length
+                : undefined;
             const data = {
                 packingNumber: String(packingNumber),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
+            if (totalBoxes !== undefined) data.totalBoxes = totalBoxes;
             if (!snap.exists) {
                 data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
             }
@@ -469,6 +518,216 @@ const FirebaseSync = {
         } catch (err) {
             console.error('[Firebase] packingList upsert error:', err);
         }
+    }
+};
+
+// ── Firebase Persistence (offline support) ────────────────────────────────────
+firebase.firestore().enablePersistence({ synchronizeTabs: false })
+    .then(() => console.log('[Firebase] Offline persistence enabled'))
+    .catch(err => console.warn('[Firebase] Persistence unavailable:', err.code));
+
+// ── LocalBackup — localStorage safety layer ───────────────────────────────────
+const LocalBackup = {
+    _key: pn => `pk_backup_${pn}`,
+
+    save(packingNumber, allBoxes) {
+        try {
+            localStorage.setItem(this._key(packingNumber), JSON.stringify({
+                allBoxes, packingNumber: String(packingNumber),
+                savedAt: new Date().toISOString()
+            }));
+        } catch (e) { console.warn('[LocalBackup] save failed:', e); }
+    },
+
+    load(packingNumber) {
+        try {
+            const raw = localStorage.getItem(this._key(packingNumber));
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    },
+
+    clear(packingNumber) {
+        localStorage.removeItem(this._key(packingNumber));
+    },
+
+    listAll() {
+        const result = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('pk_backup_')) {
+                try {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    if (data && data.packingNumber) result.push(data);
+                } catch (e) {}
+            }
+        }
+        return result.sort((a, b) => parseInt(b.packingNumber) - parseInt(a.packingNumber));
+    }
+};
+
+// ── OfflineManager ────────────────────────────────────────────────────────────
+const OfflineManager = {
+    _isOffline: !navigator.onLine,
+
+    init() {
+        window.addEventListener('offline', () => { this._isOffline = true;  this._onOffline(); });
+        window.addEventListener('online',  () => { this._isOffline = false; this._onOnline();  });
+        if (!navigator.onLine) this._showIndicator(true);
+    },
+
+    _onOffline() {
+        this._showIndicator(true);
+        const pn = document.getElementById('packingNumber').value;
+        if (pn && State.allBoxes.length > 0) {
+            LocalBackup.save(pn, State.allBoxes);
+            const el = document.getElementById('offlineSavedAt');
+            const now = new Date();
+            if (el) el.textContent = `— saved ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+        }
+    },
+
+    _onOnline() {
+        this._showIndicator(false);
+        const pn = document.getElementById('packingNumber').value;
+        if (pn) setTimeout(() => LocalBackup.clear(pn), 8000); // give Firebase time to sync
+    },
+
+    _showIndicator(offline) {
+        const el = document.getElementById('offlineIndicator');
+        if (!el) return;
+        if (offline) { el.classList.remove('hidden'); el.classList.add('flex'); }
+        else         { el.classList.add('hidden');    el.classList.remove('flex'); }
+    },
+
+    // Call on every box save while offline — keeps backup fresh
+    onBoxSaved(packingNumber, allBoxes) {
+        if (this._isOffline) LocalBackup.save(packingNumber, allBoxes);
+    }
+};
+
+// ── StartupManager — packing selection modal ──────────────────────────────────
+const StartupManager = {
+
+    async show() {
+        if (!navigator.onLine) {
+            document.getElementById('startupOfflineWarning').classList.remove('hidden');
+        }
+        await this._loadList();
+    },
+
+    async _loadList() {
+        const container = document.getElementById('startupPackingsList');
+        try {
+            const snap = await _db.collection('packingLists').get();
+            const lists = snap.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => parseInt(b.packingNumber) - parseInt(a.packingNumber));
+
+            if (lists.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">No packings yet. Create a new one below.</p>';
+            } else {
+                container.innerHTML = lists.map(pl => this._row(pl)).join('');
+            }
+        } catch (err) {
+            // Offline — fall back to localStorage
+            const backups = LocalBackup.listAll();
+            if (backups.length > 0) {
+                container.innerHTML = '<p class="text-orange-400 text-xs text-center mb-2">⚡ Offline — showing local backups</p>'
+                    + backups.map(b => this._localRow(b)).join('');
+            } else {
+                container.innerHTML = '<p class="text-red-400 text-sm text-center py-6">Offline & no local backup found.</p>';
+            }
+        }
+    },
+
+    _row(pl) {
+        const ts = pl.createdAt || pl.updatedAt;
+        const date = ts ? new Date(ts.seconds * 1000).toLocaleDateString('he-IL') : '—';
+        const boxes = pl.totalBoxes !== undefined ? `${pl.totalBoxes} boxes` : '';
+        const shipped = pl.status === 'shipped' ? ' ✓' : '';
+        return `<div class="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+            <div>
+              <span class="font-bold text-gray-800 text-lg">#${pl.packingNumber}${shipped}</span>
+              <span class="text-gray-400 text-sm ml-2">${date}</span>
+              ${boxes ? `<span class="text-gray-400 text-xs ml-2">· ${boxes}</span>` : ''}
+            </div>
+            <button onclick="StartupManager.open('${pl.packingNumber}', this)"
+              class="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700">Open</button>
+          </div>`;
+    },
+
+    _localRow(b) {
+        const date = b.savedAt ? new Date(b.savedAt).toLocaleDateString('he-IL') : '—';
+        const boxes = b.allBoxes ? b.allBoxes.length : 0;
+        return `<div class="flex items-center justify-between p-3 rounded-lg border border-orange-200 bg-orange-50">
+            <div>
+              <span class="font-bold text-gray-800 text-lg">#${b.packingNumber}</span>
+              <span class="text-gray-400 text-sm ml-2">${date}</span>
+              <span class="text-orange-500 text-xs ml-2">⚡ local · ${boxes} boxes</span>
+            </div>
+            <button onclick="StartupManager.openFromLocal('${b.packingNumber}')"
+              class="px-4 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600">Open</button>
+          </div>`;
+    },
+
+    async open(packingNumber, btn) {
+        if (btn) { btn.textContent = 'Loading...'; btn.disabled = true; }
+        try {
+            const snap = await _db.collection('boxes')
+                .where('packingNumber', '==', String(packingNumber))
+                .get();
+            State.allBoxes = snap.docs.map(d => d.data())
+                .sort((a, b) => parseInt(a.boxNumber) - parseInt(b.boxNumber));
+        } catch (err) {
+            const backup = LocalBackup.load(packingNumber);
+            State.allBoxes = backup ? backup.allBoxes : [];
+        }
+        this._finalize(packingNumber);
+    },
+
+    openFromLocal(packingNumber) {
+        const backup = LocalBackup.load(packingNumber);
+        State.allBoxes = backup ? backup.allBoxes : [];
+        this._finalize(packingNumber);
+    },
+
+    _finalize(packingNumber) {
+        document.getElementById('packingNumber').value = packingNumber;
+        const maxBox = State.allBoxes.reduce((m, b) => Math.max(m, parseInt(b.boxNumber) || 0), 0);
+        document.getElementById('boxNumber').value = maxBox + 1;
+        document.getElementById('startupModal').style.display = 'none';
+        UI.updateBoxesList();
+        UI.updateScannedItemsList();
+        BoxManager.initializeNewBox();
+        document.getElementById('barcodeInput').focus();
+    },
+
+    async createNew() {
+        const input = document.getElementById('newPackingInput');
+        const errEl = document.getElementById('startupError');
+        const pn = input.value.trim();
+        if (!pn) { errEl.textContent = 'Enter a packing number'; errEl.classList.remove('hidden'); return; }
+        errEl.classList.add('hidden');
+
+        try {
+            const snap = await _db.collection('packingLists').doc(String(pn)).get();
+            if (snap.exists) {
+                if (!confirm(`Packing #${pn} already exists. Open it?`)) return;
+                await this.open(pn);
+                return;
+            }
+        } catch (err) {
+            const backup = LocalBackup.load(pn);
+            if (backup) {
+                if (!confirm(`Packing #${pn} found in local backup. Open it?`)) return;
+                this.openFromLocal(pn);
+                return;
+            }
+        }
+
+        State.allBoxes = [];
+        await FirebaseSync._upsertPackingList(pn);
+        this._finalize(pn);
     }
 };
 
@@ -921,6 +1180,7 @@ const FirebaseSync = {
 
                     // ── Firebase sync ──
                     FirebaseSync.syncBox(boxData);
+                    OfflineManager.onBoxSaved(boxData.packingNumber, State.allBoxes);
 
                     UI.updateBoxesList();
                     Utils.showAlert({ message: 'Box saved successfully / Pudełko zostało zapisane', type: 'success' });
@@ -1803,11 +2063,9 @@ const FirebaseSync = {
                 BoxManager.updateMissingAlert();
             });
 
-            document.getElementById('barcodeInput').focus();
-
-            BoxManager.initializeNewBox();
-            UI.updateBoxesList();
-            UI.updateScannedItemsList();
+            // Initialize offline manager + show startup modal
+            OfflineManager.init();
+            StartupManager.show();
         });
     </script>
 </body>
