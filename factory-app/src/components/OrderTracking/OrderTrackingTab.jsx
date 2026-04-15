@@ -13,7 +13,7 @@ export default function OrderTrackingTab() {
   const [orders, setOrders] = useState([]);
   const [boxes,  setBoxes]  = useState([]);
   const [selected, setSelected] = useState(null);
-  const [filters, setFilters] = useState({ brand: '', size: '', brim: '' });
+  const [filters, setFilters] = useState({ orderNumber: '', brand: '', size: '', brim: '' });
 
   useEffect(() => {
     const u1 = onSnapshot(collection(db, 'orders'), s => setOrders(s.docs.map(d => ({ _id: d.id, ...d.data() }))));
@@ -22,14 +22,31 @@ export default function OrderTrackingTab() {
   }, []);
 
   function setFilter(k, v) { setFilters(f => ({ ...f, [k]: v })); }
-  function clearFilters()  { setFilters({ brand: '', size: '', brim: '' }); }
+  function clearFilters()  { setFilters({ orderNumber: '', brand: '', size: '', brim: '' }); }
   const hasFilter = Object.values(filters).some(v => v !== '');
+
+  // ── Unique filter options from live data ─────────────────────────────────
+  const filterOptions = useMemo(() => {
+    const orderNumbers = [...new Set(
+      orders.map(o => String(o.orderNumber || '').trim()).filter(Boolean)
+    )].sort();
+    const brands = [...new Set(
+      orders.map(o => String(o.brand || '').toUpperCase().trim()).filter(Boolean)
+    )].sort();
+    const brimSet = new Set();
+    orders.forEach(o => (o.sizes || []).forEach(row => {
+      if (row.brim) brimSet.add(String(row.brim).trim());
+    }));
+    const brims = [...brimSet].sort((a, b) => parseFloat(a) - parseFloat(b));
+    return { orderNumbers, brands, brims };
+  }, [orders]);
 
   // ── Aggregated computation ────────────────────────────────────────────────
   const aggregated = useMemo(() => {
-    const brandF = filters.brand.trim().toUpperCase();
-    const sizeF  = filters.size;
-    const brimF  = filters.brim.trim();
+    const orderNumF = filters.orderNumber.trim();
+    const brandF    = filters.brand.trim().toUpperCase();
+    const sizeF     = filters.size;
+    const brimF     = filters.brim.trim();
 
     const orderedBySz  = {};
     const shippedBySz  = {};
@@ -42,6 +59,7 @@ export default function OrderTrackingTab() {
 
     // ── Count ordered ─────────────────────────────────────────────────────
     orders.forEach(order => {
+      if (orderNumF && String(order.orderNumber || '').trim() !== orderNumF) return;
       if (brandF && !String(order.brand || '').toUpperCase().includes(brandF)) return;
 
       const onum = String(order.orderNumber || '');
@@ -140,9 +158,10 @@ export default function OrderTrackingTab() {
 
     // Filter summary row
     const filterDesc = [
-      filters.brand && `מותג: ${filters.brand}`,
-      filters.size  && `מידה: ${filters.size}`,
-      filters.brim  && `שוליים: ${filters.brim}`,
+      filters.orderNumber && `הזמנה: ${filters.orderNumber}`,
+      filters.brand       && `מותג: ${filters.brand}`,
+      filters.size        && `מידה: ${filters.size}`,
+      filters.brim        && `שוליים: ${filters.brim}`,
     ].filter(Boolean).join(' | ') || 'כל ההזמנות';
     ws[XLSX.utils.encode_cell({r:0,c:0})] = { v: filterDesc, s: { font:{bold:true} } };
 
@@ -226,36 +245,63 @@ export default function OrderTrackingTab() {
       {/* ── Filters ──────────────────────────────────────────────────────────── */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">סינון</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <FilterInput
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <FilterSelect
+            label="מספר הזמנה"
+            value={filters.orderNumber}
+            onChange={v => setFilter('orderNumber', v)}
+            options={filterOptions.orderNumbers}
+            placeholder="כל ההזמנות"
+          />
+          <FilterSelect
             label="מותג"
             value={filters.brand}
-            onChange={v => setFilter('brand', v.toUpperCase())}
-            placeholder="D92, F92, K88..."
-            upper
+            onChange={v => setFilter('brand', v)}
+            options={filterOptions.brands}
+            placeholder="כל המותגים"
           />
-          <div>
-            <label className="form-label text-xs">מידה</label>
-            <select
-              className="form-select text-sm"
-              value={filters.size}
-              onChange={e => setFilter('size', e.target.value)}
-            >
-              <option value="">כל המידות</option>
-              {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <FilterInput
+          <FilterSelect
             label="גודל שוליים"
             value={filters.brim}
             onChange={v => setFilter('brim', v)}
-            placeholder="8, 10, 12..."
+            options={filterOptions.brims}
+            placeholder="כל השוליים"
+          />
+          <FilterSelect
+            label="מידה"
+            value={filters.size}
+            onChange={v => setFilter('size', v)}
+            options={SIZES}
+            placeholder="כל המידות"
           />
         </div>
+
+        {/* ── Active filter chips ── */}
         {hasFilter && (
-          <p className="text-xs mt-2" style={{ color: '#C9A84C' }}>
-            מציג נתונים מסוננים מתוך {orders.length} הזמנות
-          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+            <span className="text-xs text-gray-400">מסונן לפי:</span>
+            {[
+              { key: 'orderNumber', label: 'הזמנה' },
+              { key: 'brand',       label: 'מותג'  },
+              { key: 'brim',        label: 'שוליים' },
+              { key: 'size',        label: 'מידה'  },
+            ].filter(f => filters[f.key]).map(f => (
+              <span
+                key={f.key}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
+                style={{ backgroundColor: '#FBF5DC', color: '#7A5C20', border: '1px solid #E8C84A' }}
+              >
+                {f.label}: <strong>{filters[f.key]}</strong>
+                <button
+                  onClick={() => setFilter(f.key, '')}
+                  className="ms-1 font-bold hover:opacity-70"
+                >×</button>
+              </span>
+            ))}
+            <span className="text-xs text-gray-400 ms-1">
+              ({orders.length} הזמנות במערכת)
+            </span>
+          </div>
         )}
       </div>
 
@@ -549,17 +595,18 @@ function OrderDetail({ order, boxes, onBack }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Small reusable components
 // ─────────────────────────────────────────────────────────────────────────────
-function FilterInput({ label, value, onChange, placeholder, upper }) {
+function FilterSelect({ label, value, onChange, options, placeholder }) {
   return (
     <div>
       <label className="form-label text-xs">{label}</label>
-      <input
-        type="text"
-        className={`form-input text-sm ${upper ? 'uppercase font-mono tracking-widest' : ''}`}
+      <select
+        className="form-select text-sm"
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
+      >
+        <option value="">{placeholder}</option>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
     </div>
   );
 }
