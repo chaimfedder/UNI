@@ -48,7 +48,7 @@ export default function CreateOrderForm() {
 
   const [header, setHeader] = useState({
     orderNumber: '', orderDate: today, orderedBy: '',
-    model: '', bodyType: '', bodyOrder: '', invoiceNumber: '',
+    brand: '', model: '', bodyType: '', bodyOrder: '', invoiceNumber: '',
   });
   const [rows, setRows]     = useState([emptyRow()]);
   const [specs, setSpecs]   = useState(emptySpecs());
@@ -138,7 +138,7 @@ export default function CreateOrderForm() {
   }
 
   function clearForm() {
-    setHeader({ orderNumber: '', orderDate: today, orderedBy: '', model: '', bodyType: '', bodyOrder: '', invoiceNumber: '' });
+    setHeader({ orderNumber: '', orderDate: today, orderedBy: '', brand: '', model: '', bodyType: '', bodyOrder: '', invoiceNumber: '' });
     setRows([emptyRow()]);
     setSpecs(emptySpecs());
   }
@@ -197,19 +197,21 @@ export default function CreateOrderForm() {
             {[
               { field: 'orderDate',     label: t('orders.orderDate'),     type: 'date' },
               { field: 'orderedBy',     label: t('orders.customer'),      type: 'text' },
+              { field: 'brand',         label: 'מותג (3 תווים)',          type: 'text', maxLength: 3, upper: true },
               { field: 'model',         label: t('orders.model'),         type: 'text' },
               { field: 'orderNumber',   label: t('orders.orderNumber'),   type: 'text' },
               { field: 'bodyType',      label: t('orders.bodyType'),      type: 'text' },
               { field: 'bodyOrder',     label: t('orders.bodyOrder'),     type: 'text' },
               { field: 'invoiceNumber', label: t('orders.invoiceNumber'), type: 'text' },
-            ].map(({ field, label, type }) => (
+            ].map(({ field, label, type, maxLength, upper }) => (
               <div key={field}>
                 <label className="form-label">{label}</label>
                 <input
                   type={type}
-                  className="form-input"
+                  className={`form-input ${field === 'brand' ? 'font-bold tracking-widest uppercase' : ''}`}
                   value={header[field]}
-                  onChange={e => setHeaderField(field, e.target.value)}
+                  maxLength={maxLength}
+                  onChange={e => setHeaderField(field, upper ? e.target.value.toUpperCase() : e.target.value)}
                 />
               </div>
             ))}
