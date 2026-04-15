@@ -59,8 +59,8 @@ export default function PackingTab() {
 
       {/* ── Stat cards ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="קרטונים היום"   value={stats.boxesToday}  sub={`${stats.itemsToday} פריטים`}  color="blue" />
-        <StatCard label="קרטונים השבוע"  value={stats.boxesWeek}   sub={`${stats.itemsWeek} פריטים`}   color="indigo" />
+        <StatCard label="קרטונים היום"   value={stats.boxesToday}  sub={`${stats.itemsToday} פריטים`}  color="gold" />
+        <StatCard label="קרטונים השבוע"  value={stats.boxesWeek}   sub={`${stats.itemsWeek} פריטים`}   color="gold" />
         <StatCard label="אריזות פתוחות"  value={stats.openLists}   sub="בעבודה"                        color="orange" />
         <StatCard label="אריזות שנשלחו"  value={stats.shippedLists} sub="מכל הזמן"                    color="green" />
       </div>
@@ -79,10 +79,10 @@ export default function PackingTab() {
               .filter(pl => pl.status !== 'shipped')
               .sort((a, b) => parseInt(b.packingNumber) - parseInt(a.packingNumber))
               .map(pl => (
-                <div key={pl._id} className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-                  <span className="font-bold text-blue-700">#{pl.packingNumber}</span>
+                <div key={pl._id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border" style={{ backgroundColor: '#FBF5DC', borderColor: '#E8C84A' }}>
+                  <span className="font-bold" style={{ color: '#A07830' }}>#{pl.packingNumber}</span>
                   {pl.totalBoxes !== undefined && (
-                    <span className="text-blue-400 text-xs">{pl.totalBoxes} קרטונים</span>
+                    <span className="text-xs" style={{ color: '#C9A84C' }}>{pl.totalBoxes} קרטונים</span>
                   )}
                 </div>
               ))}
@@ -114,7 +114,7 @@ export default function PackingTab() {
                     : box.timestamp ? new Date(box.timestamp) : null;
                   return (
                     <tr key={box._id} className="border-t border-gray-50 hover:bg-gray-50">
-                      <td className="px-3 py-2 font-semibold text-blue-600">#{box.packingNumber}</td>
+                      <td className="px-3 py-2 font-semibold" style={{ color: '#C9A84C' }}>#{box.packingNumber}</td>
                       <td className="px-3 py-2 text-gray-700">{box.boxNumber}</td>
                       <td className="px-3 py-2">
                         <span className="badge badge-gray">{box.boxSize}</span>
@@ -141,14 +141,14 @@ export default function PackingTab() {
 
 function StatCard({ label, value, sub, color }) {
   const colors = {
-    blue:   'bg-blue-50   border-blue-200   text-blue-700',
-    indigo: 'bg-indigo-50 border-indigo-200 text-indigo-700',
+    gold:   'border',
     orange: 'bg-orange-50 border-orange-200 text-orange-700',
     green:  'bg-green-50  border-green-200  text-green-700',
     gray:   'bg-gray-50   border-gray-200   text-gray-700',
   };
+  const goldStyle = color === 'gold' ? { backgroundColor: '#FBF5DC', borderColor: '#E8C84A', color: '#A07830' } : {};
   return (
-    <div className={`border rounded-xl px-4 py-3 ${colors[color] || colors.gray}`}>
+    <div className={`border rounded-xl px-4 py-3 ${colors[color] || colors.gray}`} style={goldStyle}>
       <div className="text-2xl font-bold">{value}</div>
       <div className="text-sm font-medium mt-0.5">{label}</div>
       {sub && <div className="text-xs opacity-60 mt-0.5">{sub}</div>}

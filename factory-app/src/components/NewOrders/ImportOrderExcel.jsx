@@ -207,7 +207,8 @@ export default function ImportOrderExcel() {
                   type="file"
                   accept=".xlsx,.xls"
                   className="form-input file:mr-3 file:py-1 file:px-3 file:rounded file:border-0
-                             file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                             file:text-sm file:font-semibold"
+                  style={{ '--file-bg': '#FBF5DC', '--file-color': '#7A5C20' }}
                 />
                 <p className="text-xs text-gray-500 mt-1">{t('orders.excelHint')}</p>
               </div>
@@ -218,7 +219,7 @@ export default function ImportOrderExcel() {
             {/* Right: instructions */}
             <div className="alert-info text-sm">
               <p className="font-semibold mb-2">Instructions:</p>
-              <ul className="list-disc list-inside space-y-1 text-blue-700">
+              <ul className="list-disc list-inside space-y-1" style={{ color: '#7A5C20' }}>
                 <li>Row 2: order date, customer, model, body type, body order</li>
                 <li>Find row with <b>HAT NAME</b> column</li>
                 <li>Sizes row must contain 51, 52 … 63</li>
@@ -310,7 +311,7 @@ export default function ImportOrderExcel() {
                             {r.sizes[sz]?.quantity || ''}
                           </td>
                         ))}
-                        <td className="font-semibold text-blue-700">{r.total}</td>
+                        <td className="font-semibold" style={{ color: '#A07830' }}>{r.total}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -318,11 +319,11 @@ export default function ImportOrderExcel() {
                     <tr className="bg-gray-50 font-bold">
                       <td colSpan={6} className="text-center text-sm">{t('orders.grandTotal')}</td>
                       {SIZES.map(sz => (
-                        <td key={sz} className="text-center text-blue-700">
+                        <td key={sz} className="text-center" style={{ color: '#A07830' }}>
                           {preview.summary.totalBySize[sz] || 0}
                         </td>
                       ))}
-                      <td className="text-center font-bold text-blue-700">
+                      <td className="text-center font-bold" style={{ color: '#A07830' }}>
                         {preview.summary.grandTotal}
                       </td>
                     </tr>

@@ -14,11 +14,14 @@ export default function Navbar() {
   const { signOut }  = useAuth();
 
   return (
-    <nav className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-50">
+    <nav
+      className="border-b sticky top-0 z-50"
+      style={{ backgroundColor: '#111111', borderColor: '#2A2A2A' }}
+    >
       <div className="max-w-screen-2xl mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           {/* Brand */}
-          <div className="flex items-center gap-2 font-bold text-blue-700 text-lg shrink-0">
+          <div className="flex items-center gap-2 font-bold text-lg shrink-0" style={{ color: '#D4AF37' }}>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -35,8 +38,12 @@ export default function Navbar() {
                 className={({ isActive }) =>
                   `flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors
                    ${isActive
-                     ? 'bg-blue-600 text-white'
-                     : 'text-gray-600 hover:bg-gray-100'}`
+                     ? 'font-semibold'
+                     : 'text-gray-400 hover:text-gray-200'}`
+                }
+                style={({ isActive }) => isActive
+                  ? { backgroundColor: '#C9A84C', color: '#111111' }
+                  : { ':hover': { backgroundColor: '#1E1E1E' } }
                 }
               >
                 <span>{icon}</span>
@@ -53,10 +60,11 @@ export default function Navbar() {
                 <button
                   key={lng}
                   onClick={() => i18n.changeLanguage(lng)}
-                  className={`px-2 py-0.5 rounded text-xs font-semibold border transition-colors
-                    ${i18n.language === lng
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'text-gray-500 border-gray-300 hover:border-blue-400'}`}
+                  className="px-2 py-0.5 rounded text-xs font-semibold border transition-colors"
+                  style={i18n.language === lng
+                    ? { backgroundColor: '#C9A84C', color: '#111111', borderColor: '#C9A84C' }
+                    : { color: '#A0A0A0', borderColor: '#3A3A3A', backgroundColor: 'transparent' }
+                  }
                 >
                   {lng === 'he' ? 'ע' : lng === 'en' ? 'EN' : 'PL'}
                 </button>
@@ -66,7 +74,8 @@ export default function Navbar() {
             {/* Logout */}
             <button
               onClick={signOut}
-              className="btn-secondary btn-sm gap-1"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded border transition-colors"
+              style={{ color: '#A0A0A0', borderColor: '#3A3A3A' }}
               title={t('nav.logout')}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

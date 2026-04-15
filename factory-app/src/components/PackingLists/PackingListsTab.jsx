@@ -149,9 +149,13 @@ export default function PackingListsTab() {
             onClick={() => setFilter(f)}
             className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
               filter === f
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'text-gray-600 border-gray-300 hover:border-blue-400'
+                ? ''
+                : 'text-gray-600 border-gray-300'
             }`}
+            style={filter === f
+              ? { backgroundColor: '#C9A84C', color: '#111111', borderColor: '#C9A84C' }
+              : {}
+            }
           >
             {t(`packingLists.filter${f.charAt(0).toUpperCase() + f.slice(1)}`)}
           </button>
@@ -211,7 +215,8 @@ function PackingListRow({ pl, onView, onMarkShipped }) {
       <Td>
         <button
           onClick={onView}
-          className="font-bold text-blue-600 hover:underline"
+          className="font-bold hover:underline"
+          style={{ color: '#C9A84C' }}
         >
           {pl.packingNumber}
         </button>
@@ -232,10 +237,9 @@ function PackingListRow({ pl, onView, onMarkShipped }) {
           <button
             onClick={onMarkShipped}
             className={`inline-flex items-center px-2 py-1 text-xs rounded-lg font-medium cursor-pointer ${
-              shipped
-                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+              shipped ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : ''
             }`}
+            style={!shipped ? { backgroundColor: '#C9A84C', color: '#111111' } : {}}
           >
             {shipped ? t('packingLists.open') : t('packingLists.markShipped')}
           </button>
@@ -319,7 +323,7 @@ function PackingDetail({ packingNumber, packingLists, onBack, onExport, onMarkSh
       </div>
 
       {/* Summary bar */}
-      <div className="flex flex-wrap gap-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm">
+      <div className="flex flex-wrap gap-4 rounded-lg px-4 py-3 text-sm border" style={{ backgroundColor: '#FBF5DC', borderColor: '#E8C84A' }}>
         <span><b>{t('packingLists.totalBoxes')}:</b> {totalBoxes}</span>
         <span><b>{t('packingLists.totalItems')}:</b> {totalItems}</span>
         {pl?.shipmentDate && (

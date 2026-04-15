@@ -16,14 +16,16 @@ export default function NewOrdersTab() {
           <button
             onClick={() => setTab('create')}
             className={`px-4 py-1.5 text-sm font-medium transition-colors
-              ${tab === 'create' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              ${tab === 'create' ? 'font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+            style={tab === 'create' ? { backgroundColor: '#C9A84C', color: '#111111' } : {}}
           >
             {t('orders.createTab')}
           </button>
           <button
             onClick={() => setTab('import')}
             className={`px-4 py-1.5 text-sm font-medium transition-colors
-              ${tab === 'import' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              ${tab === 'import' ? 'font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
+            style={tab === 'import' ? { backgroundColor: '#C9A84C', color: '#111111' } : {}}
           >
             {t('orders.importTab')}
           </button>

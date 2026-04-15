@@ -253,7 +253,7 @@ export default function OrderTrackingTab() {
           />
         </div>
         {hasFilter && (
-          <p className="text-xs text-blue-600 mt-2">
+          <p className="text-xs mt-2" style={{ color: '#C9A84C' }}>
             מציג נתונים מסוננים מתוך {orders.length} הזמנות
           </p>
         )}
@@ -261,7 +261,7 @@ export default function OrderTrackingTab() {
 
       {/* ── Summary cards ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="הוזמן סה״כ"  value={totalOrdered} color="blue" />
+        <StatCard label="הוזמן סה״כ"  value={totalOrdered} color="gold" />
         <StatCard label="נארז / נשלח" value={totalShipped} color="green" />
         <StatCard label="נותר"        value={totalRemain}  color={totalRemain > 0 ? 'orange' : 'green'} />
         <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex flex-col justify-center gap-1.5">
@@ -275,7 +275,7 @@ export default function OrderTrackingTab() {
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <div className="px-4 py-2 bg-gray-50 border-b text-sm font-semibold text-gray-700">
             פירוט לפי מידה
-            {hasFilter && <span className="text-blue-600 text-xs ms-2 font-normal">מסונן</span>}
+            {hasFilter && <span className="text-xs ms-2 font-normal" style={{ color: '#C9A84C' }}>מסונן</span>}
           </div>
           <table className="w-full text-sm text-center">
             <thead>
@@ -351,7 +351,7 @@ export default function OrderTrackingTab() {
                       onClick={() => orderObj && setSelected(orderObj)}
                     >
                       <Td>
-                        <span className="font-bold text-blue-600">{row.orderNumber}</span>
+                        <span className="font-bold" style={{ color: '#C9A84C' }}>{row.orderNumber}</span>
                       </Td>
                       <Td>
                         {row.brand
@@ -437,12 +437,12 @@ function OrderDetail({ order, boxes, onBack }) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <InfoCard label="מותג"    value={order.brand}      highlight="blue" />
+        <InfoCard label="מותג"    value={order.brand}      highlight="gold" />
         <InfoCard label="לקוח"    value={order.orderedBy} />
         <InfoCard label="תאריך"   value={order.orderDate} />
         <InfoCard label="סטטוס"
           value={grandRemain === 0 && grandOrdered > 0 ? 'נשלח' : grandShipped > 0 ? 'חלקי' : 'הוזמן'}
-          highlight={grandRemain === 0 && grandOrdered > 0 ? 'green' : grandShipped > 0 ? 'yellow' : 'blue'}
+          highlight={grandRemain === 0 && grandOrdered > 0 ? 'green' : grandShipped > 0 ? 'yellow' : 'gold'}
         />
       </div>
 
@@ -493,7 +493,7 @@ function OrderDetail({ order, boxes, onBack }) {
           <h3 className="font-semibold text-gray-700 mb-2 text-sm">אריזות שמכילות הזמנה זו</h3>
           <div className="flex flex-wrap gap-2">
             {shipped._packings.map(pn => (
-              <span key={pn} className="badge badge-blue">אריזה #{pn}</span>
+              <span key={pn} className="badge badge-ordered">אריזה #{pn}</span>
             ))}
           </div>
           {shipped._brands?.length > 0 && (
@@ -566,13 +566,14 @@ function FilterInput({ label, value, onChange, placeholder, upper }) {
 
 function StatCard({ label, value, color }) {
   const colors = {
-    blue:   'bg-blue-50   border-blue-200   text-blue-700',
+    gold:   '',
     green:  'bg-green-50  border-green-200  text-green-700',
     orange: 'bg-orange-50 border-orange-200 text-orange-700',
     gray:   'bg-gray-50   border-gray-200   text-gray-700',
   };
+  const goldStyle = color === 'gold' ? { backgroundColor: '#FBF5DC', borderColor: '#E8C84A', color: '#A07830' } : {};
   return (
-    <div className={`border rounded-xl px-4 py-3 ${colors[color] || colors.gray}`}>
+    <div className={`border rounded-xl px-4 py-3 ${colors[color] || colors.gray}`} style={goldStyle}>
       <div className="text-2xl font-bold">{value}</div>
       <div className="text-sm font-medium mt-0.5">{label}</div>
     </div>
@@ -595,7 +596,7 @@ function Td({ children, center }) {
 }
 
 function ProgressBar({ pct, wide }) {
-  const color = pct >= 100 ? 'bg-green-500' : pct >= 50 ? 'bg-blue-500' : 'bg-orange-400';
+  const color = pct >= 100 ? 'bg-green-500' : pct >= 50 ? 'bg-gold-600' : 'bg-orange-400';
   return (
     <div className={`flex items-center gap-2 ${wide ? 'flex-1 max-w-xs' : ''}`}>
       <div className="flex-1 bg-gray-200 rounded-full h-2 min-w-[60px]">
@@ -607,13 +608,14 @@ function ProgressBar({ pct, wide }) {
 }
 
 function InfoCard({ label, value, highlight }) {
+  const goldCls = highlight === 'gold' ? { backgroundColor: '#FBF5DC', borderColor: '#E8C84A', color: '#A07830' } : {};
   const cls = {
     green:  'bg-green-50  border-green-200  text-green-700',
     yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700',
-    blue:   'bg-blue-50   border-blue-200   text-blue-700',
+    gold:   '',
   }[highlight] || 'bg-gray-50 border-gray-200 text-gray-700';
   return (
-    <div className={`border rounded-xl px-3 py-2 ${cls}`}>
+    <div className={`border rounded-xl px-3 py-2 ${cls}`} style={goldCls}>
       <div className="text-xs opacity-70 mb-0.5">{label}</div>
       <div className="font-semibold text-sm truncate">{value || '—'}</div>
     </div>

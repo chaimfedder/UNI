@@ -278,7 +278,7 @@ export default function CreateOrderForm() {
                       />
                     </td>
                   ))}
-                  <td className="font-semibold text-blue-700">{row.total}</td>
+                  <td className="font-semibold" style={{ color: '#A07830' }}>{row.total}</td>
                   <td>
                     <button
                       type="button"
@@ -294,11 +294,11 @@ export default function CreateOrderForm() {
               <tr className="bg-gray-50 font-bold">
                 <td colSpan={6} className="text-center p-1 text-sm">{t('orders.grandTotal')}</td>
                 {SIZES.map(sz => (
-                  <td key={sz} className="text-center text-blue-700">
+                  <td key={sz} className="text-center" style={{ color: '#A07830' }}>
                     {summary.totalBySize[sz] || 0}
                   </td>
                 ))}
-                <td className="text-center text-blue-700 font-bold">{summary.grandTotal}</td>
+                <td className="text-center font-bold" style={{ color: '#A07830' }}>{summary.grandTotal}</td>
                 <td></td>
               </tr>
             </tfoot>
@@ -313,7 +313,7 @@ export default function CreateOrderForm() {
 
           {/* Leather */}
           <div className="card border border-gray-100">
-            <div className="card-header bg-sky-50 text-sky-800 text-sm">{t('orders.leatherSection')}</div>
+            <div className="card-header text-sm" style={{ backgroundColor: '#FBF5DC', color: '#7A5C20' }}>{t('orders.leatherSection')}</div>
             <div className="card-body">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
@@ -356,7 +356,7 @@ export default function CreateOrderForm() {
 
           {/* Lining */}
           <div className="card border border-gray-100">
-            <div className="card-header bg-sky-50 text-sky-800 text-sm">{t('orders.liningSection')}</div>
+            <div className="card-header text-sm" style={{ backgroundColor: '#FBF5DC', color: '#7A5C20' }}>{t('orders.liningSection')}</div>
             <div className="card-body">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
@@ -393,7 +393,7 @@ export default function CreateOrderForm() {
 
           {/* Ribbons */}
           <div className="card border border-gray-100">
-            <div className="card-header bg-sky-50 text-sky-800 text-sm">{t('orders.ribbonsSection')}</div>
+            <div className="card-header text-sm" style={{ backgroundColor: '#FBF5DC', color: '#7A5C20' }}>{t('orders.ribbonsSection')}</div>
             <div className="card-body">
               <div className="grid grid-cols-3 gap-3">
                 {[1,2,3].map(n => (
@@ -409,7 +409,7 @@ export default function CreateOrderForm() {
 
           {/* Comments */}
           <div className="card border border-gray-100">
-            <div className="card-header bg-sky-50 text-sky-800 text-sm">{t('orders.commentsSection')}</div>
+            <div className="card-header text-sm" style={{ backgroundColor: '#FBF5DC', color: '#7A5C20' }}>{t('orders.commentsSection')}</div>
             <div className="card-body">
               <textarea
                 className="form-input h-20 resize-none"

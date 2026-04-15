@@ -37,7 +37,7 @@ export default function App() {
         path="/*"
         element={
           <RequireAuth>
-            <div className="min-h-screen bg-gray-50 flex flex-col">
+            <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FAF8F3' }}>
               <Navbar />
               <main className="flex-1 p-4 max-w-screen-2xl mx-auto w-full">
                 <Routes>
