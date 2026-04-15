@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Packing System | System Pakowania</title>
    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <!-- Firebase SDK (compat for standalone HTML use) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -342,7 +345,128 @@
     </div>
 
     <script>
-// Global State
+// ── Firebase configuration ────────────────────────────────────────────────────
+// Replace these values with your own Firebase project config if needed.
+const firebaseConfig = {
+    apiKey:            "AIzaSyAbDV11IC0o2gPoszBSeBxCjuuryKaVPXc",
+    authDomain:        "factory-m.firebaseapp.com",
+    projectId:         "factory-m",
+    storageBucket:     "factory-m.firebasestorage.app",
+    messagingSenderId: "12277388461",
+    appId:             "1:12277388461:web:fc574186f18b6d8a1c6224"
+};
+
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const _db = firebase.firestore();
+
+// ── FirebaseSync — mirrors every PK action to Firestore ───────────────────────
+const FirebaseSync = {
+
+    // Box document ID format: "{packingNumber}_{boxNumber}"
+    boxId(packingNumber, boxNumber) {
+        return `${packingNumber}_${boxNumber}`;
+    },
+
+    // Called on completeBox (new or edit)
+    async syncBox(boxData) {
+        try {
+            const totalItems = Object.values(boxData.items).reduce(
+                (sum, item) => sum + (item.totalQuantity || 0), 0
+            );
+            const id = FirebaseSync.boxId(boxData.packingNumber, boxData.boxNumber);
+            await _db.collection('boxes').doc(id).set({
+                ...boxData,
+                totalItems,
+                syncedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            await FirebaseSync._upsertPackingList(boxData.packingNumber);
+            console.log('[Firebase] box synced:', id);
+        } catch (err) {
+            console.error('[Firebase] sync error:', err);
+        }
+    },
+
+    // Called on deleteBox (single)
+    async deleteBox(packingNumber, boxNumber) {
+        try {
+            const id = FirebaseSync.boxId(packingNumber, boxNumber);
+            await _db.collection('boxes').doc(id).delete();
+            await FirebaseSync._upsertPackingList(packingNumber);
+            console.log('[Firebase] box deleted:', id);
+        } catch (err) {
+            console.error('[Firebase] delete error:', err);
+        }
+    },
+
+    // Called on confirmDeleteMultiple — receives array of {packingNumber, boxNumber}
+    async deleteMultiple(boxes) {
+        try {
+            const CHUNK = 490;
+            for (let i = 0; i < boxes.length; i += CHUNK) {
+                const batch = _db.batch();
+                boxes.slice(i, i + CHUNK).forEach(({ packingNumber, boxNumber }) => {
+                    batch.delete(_db.collection('boxes').doc(FirebaseSync.boxId(packingNumber, boxNumber)));
+                });
+                await batch.commit();
+            }
+            const packingNumbers = [...new Set(boxes.map(b => b.packingNumber))];
+            for (const pn of packingNumbers) {
+                await FirebaseSync._upsertPackingList(pn);
+            }
+            console.log('[Firebase] deleted', boxes.length, 'boxes');
+        } catch (err) {
+            console.error('[Firebase] delete-multiple error:', err);
+        }
+    },
+
+    // Called on clearAll — pass State.allBoxes BEFORE clearing
+    async clearAll(allBoxes) {
+        if (!allBoxes || allBoxes.length === 0) return;
+        const boxes = allBoxes.map(b => ({ packingNumber: b.packingNumber, boxNumber: b.boxNumber }));
+        await FirebaseSync.deleteMultiple(boxes);
+    },
+
+    // Called on loadBackup — pass full State.allBoxes AFTER loading
+    async batchSync(allBoxes) {
+        if (!allBoxes || allBoxes.length === 0) return;
+        try {
+            const CHUNK = 490;
+            for (let i = 0; i < allBoxes.length; i += CHUNK) {
+                const batch = _db.batch();
+                allBoxes.slice(i, i + CHUNK).forEach(boxData => {
+                    const totalItems = Object.values(boxData.items).reduce(
+                        (sum, item) => sum + (item.totalQuantity || 0), 0
+                    );
+                    const id = FirebaseSync.boxId(boxData.packingNumber, boxData.boxNumber);
+                    batch.set(_db.collection('boxes').doc(id), {
+                        ...boxData, totalItems,
+                        syncedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                });
+                await batch.commit();
+            }
+            const packingNumbers = [...new Set(allBoxes.map(b => b.packingNumber))];
+            for (const pn of packingNumbers) { await FirebaseSync._upsertPackingList(pn); }
+            console.log('[Firebase] batch-synced', allBoxes.length, 'boxes');
+        } catch (err) {
+            console.error('[Firebase] batch-sync error:', err);
+        }
+    },
+
+    // Internal: keep packingLists/{pn} document alive with metadata
+    async _upsertPackingList(packingNumber) {
+        try {
+            await _db.collection('packingLists').doc(String(packingNumber)).set({
+                packingNumber: String(packingNumber),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        } catch (err) {
+            console.error('[Firebase] packingList upsert error:', err);
+        }
+    }
+};
+
+// ── Global State
         const State = {
             scannedItems: [],
             allBoxes: [],
@@ -789,6 +913,9 @@
                         State.allBoxes.push(boxData);
                     }
 
+                    // ── Firebase sync ──
+                    FirebaseSync.syncBox(boxData);
+
                     UI.updateBoxesList();
                     Utils.showAlert({ message: 'Box saved successfully / Pudełko zostało zapisane', type: 'success' });
                     UI.resetForm();
@@ -834,11 +961,14 @@
 
             deleteBox: (index) => {
                 if (confirm('Are you sure you want to delete this box? / Czy na pewno chcesz usunąć to pudełko?')) {
+                    const box = State.allBoxes[index];
+                    // ── Firebase sync (before splice so we still have the reference) ──
+                    FirebaseSync.deleteBox(box.packingNumber, box.boxNumber);
                     State.allBoxes.splice(index, 1);
                     UI.updateBoxesList();
-                    Utils.showAlert({ 
-                        message: 'Box deleted successfully / Pudełko zostało usunięte', 
-                        type: 'success' 
+                    Utils.showAlert({
+                        message: 'Box deleted successfully / Pudełko zostało usunięte',
+                        type: 'success'
                     });
                 }
             },
@@ -940,10 +1070,21 @@
                 const count = BoxManager.boxesToDelete.length;
                 
                 if (confirm(`Are you sure you want to delete ${count} boxes? / Czy na pewno chcesz usunąć ${count} pudełek?`)) {
-                    State.allBoxes = State.allBoxes.filter(box => 
-                        !BoxManager.boxesToDelete.includes(box.boxNumber) && 
+                    // Collect full {packingNumber, boxNumber} before filtering
+                    const deletedBoxes = State.allBoxes
+                        .filter(box =>
+                            BoxManager.boxesToDelete.includes(box.boxNumber) ||
+                            BoxManager.boxesToDelete.includes(parseInt(box.boxNumber))
+                        )
+                        .map(box => ({ packingNumber: box.packingNumber, boxNumber: box.boxNumber }));
+
+                    State.allBoxes = State.allBoxes.filter(box =>
+                        !BoxManager.boxesToDelete.includes(box.boxNumber) &&
                         !BoxManager.boxesToDelete.includes(parseInt(box.boxNumber))
                     );
+
+                    // ── Firebase sync ──
+                    FirebaseSync.deleteMultiple(deletedBoxes);
 
                     UI.updateBoxesList();
                     BoxManager.closeDeleteMultipleModal();
@@ -1114,8 +1255,10 @@
                             }
                             
                             State.allBoxes = loadedData;
+                            // ── Firebase sync ──
+                            FirebaseSync.batchSync(State.allBoxes);
                             UI.updateBoxesList();
-                            
+
                             if (State.allBoxes.length > 0) {
                                 const lastPackingNumber = State.allBoxes[State.allBoxes.length - 1].packingNumber;
                                 document.getElementById('packingNumber').value = lastPackingNumber;
@@ -1622,6 +1765,8 @@
             document.getElementById('loadBackupInput').addEventListener('change', FileManager.loadBackup);
             document.getElementById('clearAllButton').addEventListener('click', () => {
                 if (confirm('Are you sure you want to delete all data? / Czy na pewno chcesz usunąć wszystkie dane?')) {
+                    // ── Firebase sync (before clearing so we have the list) ──
+                    FirebaseSync.clearAll(State.allBoxes);
                     State.allBoxes = [];
                     UI.updateBoxesList();
                     Utils.showAlert({ message: 'All data has been deleted / Wszystkie dane zostały usunięte', type: 'success' });
