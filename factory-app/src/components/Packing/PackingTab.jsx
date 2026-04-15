@@ -1,15 +1,25 @@
-import { useTranslation } from 'react-i18next';
-
-// PackingTab — placeholder until full implementation
+/**
+ * PackingTab — embeds the full PK.HTML packing tool inside the React app.
+ *
+ * PK.HTML is served as a static file from the same origin (public/PK.HTML).
+ * It has been patched with FirebaseSync calls so every action (complete box,
+ * delete box, load backup, clear all) is automatically mirrored to Firestore.
+ *
+ * The iframe gets all available viewport height below the navbar so the packing
+ * tool feels like a native part of the app.
+ */
 export default function PackingTab() {
-  const { t } = useTranslation();
   return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center text-gray-500">
-        <div className="text-5xl mb-4">📦</div>
-        <h2 className="text-xl font-semibold mb-2">{t('packing.title')}</h2>
-        <p className="text-sm">בקרוב — מערכת האריזה המלאה</p>
-      </div>
+    <div
+      style={{ height: 'calc(100vh - 3.5rem - 2rem)' }}
+      className="rounded-xl overflow-hidden border border-gray-200 shadow-sm bg-white"
+    >
+      <iframe
+        src="/PK.HTML"
+        title="Packing Tool"
+        className="w-full h-full border-0"
+        allow="clipboard-read; clipboard-write"
+      />
     </div>
   );
 }
