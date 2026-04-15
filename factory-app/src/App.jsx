@@ -39,7 +39,7 @@ export default function App() {
           <RequireAuth>
             <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FAF8F3' }}>
               <Navbar />
-              <main className="flex-1 p-4 max-w-screen-2xl mx-auto w-full">
+              <main className="flex-1 p-3 sm:p-4 max-w-screen-2xl mx-auto w-full">
                 <Routes>
                   <Route path="/"               element={<Navigate to="/orders" replace />} />
                   <Route path="/orders"          element={<NewOrdersTab />} />

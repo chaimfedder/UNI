@@ -167,7 +167,7 @@ export default function PackingListsTab() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder={t('packingLists.search')}
-          className="input-field input-sm ms-auto w-40"
+          className="input-field input-sm w-full sm:w-40 sm:ms-auto"
         />
       </div>
 
@@ -229,14 +229,14 @@ function PackingListRow({ pl, onView, onMarkShipped }) {
       </Td>
       <Td>{pl.shipmentDate || '—'}</Td>
       <Td>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={onView}
-            className="inline-flex items-center px-2 py-1 text-xs rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer">
+            className="inline-flex items-center px-2 py-2 text-xs rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer">
             {t('packingLists.viewBoxes')}
           </button>
           <button
             onClick={onMarkShipped}
-            className={`inline-flex items-center px-2 py-1 text-xs rounded-lg font-medium cursor-pointer ${
+            className={`inline-flex items-center px-2 py-2 text-xs rounded-lg font-medium cursor-pointer ${
               shipped ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : ''
             }`}
             style={!shipped ? { backgroundColor: '#C9A84C', color: '#111111' } : {}}

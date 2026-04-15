@@ -226,7 +226,7 @@ export default function OrderTrackingTab() {
       {/* ── Filters ──────────────────────────────────────────────────────────── */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">סינון</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <FilterInput
             label="מותג"
             value={filters.brand}
@@ -277,7 +277,7 @@ export default function OrderTrackingTab() {
             פירוט לפי מידה
             {hasFilter && <span className="text-xs ms-2 font-normal" style={{ color: '#C9A84C' }}>מסונן</span>}
           </div>
-          <table className="w-full text-sm text-center">
+          <table className="w-full text-xs sm:text-sm text-center">
             <thead>
               <tr className="border-b bg-gray-50">
                 <th className="px-3 py-2 text-start font-semibold text-gray-600 whitespace-nowrap"> </th>
@@ -326,7 +326,7 @@ export default function OrderTrackingTab() {
             פירוט לפי הזמנה ({perOrderList.length})
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs sm:text-sm">
               <thead>
                 <tr className="border-b text-xs text-gray-500 bg-gray-50">
                   <Th>מספר הזמנה</Th>
@@ -449,7 +449,7 @@ function OrderDetail({ order, boxes, onBack }) {
       {/* Per-size ordered vs shipped */}
       {activeSizes.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm text-center">
+          <table className="w-full text-xs sm:text-sm text-center">
             <thead>
               <tr className="bg-gray-50 border-b">
                 <th className="px-3 py-2 text-start font-semibold text-gray-600">פירוט לפי מידה</th>

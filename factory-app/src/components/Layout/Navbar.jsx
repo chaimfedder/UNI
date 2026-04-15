@@ -47,7 +47,7 @@ export default function Navbar() {
                 }
               >
                 <span>{icon}</span>
-                <span>{t(key)}</span>
+                <span className="hidden sm:inline">{t(key)}</span>
               </NavLink>
             ))}
           </div>

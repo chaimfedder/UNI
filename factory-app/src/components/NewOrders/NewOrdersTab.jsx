@@ -10,7 +10,7 @@ export default function NewOrdersTab() {
   return (
     <div className="space-y-4">
       {/* Tab header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-bold text-gray-800">{t('orders.title')}</h1>
         <div className="flex rounded-lg border border-gray-300 overflow-hidden">
           <button
