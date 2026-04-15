@@ -688,6 +688,10 @@ const StartupManager = {
     openFromLocal(packingNumber) {
         const backup = LocalBackup.load(packingNumber);
         State.allBoxes = backup ? backup.allBoxes : [];
+        // Re-sync to Firebase — local backup loaded because Firebase was unavailable
+        if (State.allBoxes.length > 0) {
+            FirebaseSync.batchSync(State.allBoxes);
+        }
         this._finalize(packingNumber);
     },
 
