@@ -36,6 +36,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -169,6 +170,23 @@ export async function clearAllBoxesFromFirebase(allBoxes) {
   );
 }
 
+// ── Packing list status ───────────────────────────────────────────────────────
+
+/**
+ * Mark a packing list as shipped (or revert to open).
+ *
+ * @param {string} packingNumber
+ * @param {'open'|'shipped'} status
+ * @param {string} [shipmentDate]  ISO date string, set when marking shipped
+ */
+export async function updatePackingListStatus(packingNumber, status, shipmentDate) {
+  const plRef = doc(db, 'packingLists', String(packingNumber));
+  const update = { status, updatedAt: serverTimestamp() };
+  if (status === 'shipped' && shipmentDate) update.shipmentDate = shipmentDate;
+  if (status === 'open') update.shipmentDate = null;
+  await setDoc(plRef, update, { merge: true });
+}
+
 // ── Real-time listeners ───────────────────────────────────────────────────────
 
 /**
@@ -190,6 +208,26 @@ export function subscribeToBoxes(callback) {
       if (pn !== 0) return pn;
       return parseInt(a.boxNumber) - parseInt(b.boxNumber);
     });
+    callback(boxes);
+  });
+}
+
+/**
+ * Subscribe to boxes for a specific packing number.
+ * Returns an unsubscribe function.
+ *
+ * @param {string} packingNumber
+ * @param {Function} callback (boxes: Array) => void
+ * @returns {Function} unsubscribe
+ */
+export function subscribeToBoxesByPacking(packingNumber, callback) {
+  const q = query(
+    collection(db, 'boxes'),
+    where('packingNumber', '==', String(packingNumber))
+  );
+  return onSnapshot(q, snapshot => {
+    const boxes = snapshot.docs.map(d => ({ _id: d.id, ...d.data() }));
+    boxes.sort((a, b) => parseInt(a.boxNumber) - parseInt(b.boxNumber));
     callback(boxes);
   });
 }
