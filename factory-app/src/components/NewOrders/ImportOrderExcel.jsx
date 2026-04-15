@@ -11,6 +11,7 @@ export default function ImportOrderExcel() {
   const fileRef  = useRef();
 
   const [orderNumber, setOrderNumber] = useState('');
+  const [model,       setModel]       = useState('');
   const [preview, setPreview]         = useState(null);  // parsed order data
   const [editMode, setEditMode]       = useState(false);
   const [editHeader, setEditHeader]   = useState({});
@@ -27,6 +28,7 @@ export default function ImportOrderExcel() {
     const file = fileRef.current?.files?.[0];
     if (!file) { showToast('error', t('orders.chooseExcel')); return; }
     if (!orderNumber.trim()) { showToast('error', t('orders.noOrderNumber')); return; }
+    if (!model.trim()) { showToast('error', 'יש להזין מודל'); return; }
 
     const reader = new FileReader();
     reader.onload = e => {
@@ -38,6 +40,7 @@ export default function ImportOrderExcel() {
 
         const order = parseOrderSheet(jsonData);
         order.header.orderNumber = orderNumber.trim();
+        order.header.model = model.trim().toUpperCase();
         setPreview(order);
         setEditHeader({ ...order.header });
         setEditMode(false);
@@ -198,6 +201,18 @@ export default function ImportOrderExcel() {
                   value={orderNumber}
                   onChange={e => setOrderNumber(e.target.value)}
                   placeholder="e.g. PO-2024-001"
+                />
+              </div>
+              <div>
+                <label className="form-label">
+                  {t('orders.model')}
+                  <span className="text-red-500 ms-1">*</span>
+                </label>
+                <input
+                  className="form-input font-mono font-bold tracking-widest uppercase"
+                  value={model}
+                  onChange={e => setModel(e.target.value.toUpperCase())}
+                  placeholder="D92, K88, F94..."
                 />
               </div>
               <div>

@@ -5,31 +5,62 @@ import ImportOrderExcel from './ImportOrderExcel';
 
 export default function NewOrdersTab() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState('create'); // 'create' | 'import'
+  const [tab, setTab] = useState(null); // null | 'create' | 'import'
 
-  return (
-    <div className="space-y-4">
-      {/* Tab header */}
-      <div className="flex flex-wrap items-center gap-3">
+  // ── Selection screen ─────────────────────────────────────────
+  if (!tab) {
+    return (
+      <div className="space-y-6">
         <h1 className="text-xl font-bold text-gray-800">{t('orders.title')}</h1>
-        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+          {/* Create */}
           <button
             onClick={() => setTab('create')}
-            className={`px-4 py-1.5 text-sm font-medium transition-colors
-              ${tab === 'create' ? 'font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
-            style={tab === 'create' ? { backgroundColor: '#C9A84C', color: '#111111' } : {}}
+            className="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 transition-all text-center"
+            style={{ borderColor: '#C9A84C', backgroundColor: '#FFFBEB' }}
           >
-            {t('orders.createTab')}
+            <span className="text-4xl">📋</span>
+            <div>
+              <div className="font-bold text-lg" style={{ color: '#1A1A1A' }}>
+                {t('orders.createTab')}
+              </div>
+              <div className="text-sm text-gray-500 mt-1">מלא טופס הזמנה חדשה</div>
+            </div>
           </button>
+
+          {/* Import */}
           <button
             onClick={() => setTab('import')}
-            className={`px-4 py-1.5 text-sm font-medium transition-colors
-              ${tab === 'import' ? 'font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
-            style={tab === 'import' ? { backgroundColor: '#C9A84C', color: '#111111' } : {}}
+            className="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 transition-all text-center"
+            style={{ borderColor: '#C9A84C', backgroundColor: '#FFFBEB' }}
           >
-            {t('orders.importTab')}
+            <span className="text-4xl">📊</span>
+            <div>
+              <div className="font-bold text-lg" style={{ color: '#1A1A1A' }}>
+                {t('orders.importTab')}
+              </div>
+              <div className="text-sm text-gray-500 mt-1">טען הזמנה מקובץ Excel</div>
+            </div>
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // ── Selected view ────────────────────────────────────────────
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => setTab(null)}
+          className="btn-secondary btn-sm"
+        >
+          ← חזור
+        </button>
+        <h1 className="text-xl font-bold text-gray-800">
+          {tab === 'create' ? t('orders.createTab') : t('orders.importTab')}
+        </h1>
       </div>
 
       {tab === 'create' && <CreateOrderForm />}
