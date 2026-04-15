@@ -53,7 +53,7 @@ export default function ImportOrderExcel() {
   function parseOrderSheet(jsonData) {
     const header = {
       orderNumber: '', orderDate: '', orderedBy: '',
-      model: '', bodyType: '', bodyOrder: '', invoiceNumber: '',
+      model: '', brand: '', bodyType: '', bodyOrder: '', invoiceNumber: '',
     };
 
     // Row index 1 (second row) has header data
@@ -255,12 +255,16 @@ export default function ImportOrderExcel() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {Object.entries(editHeader).map(([field, val]) => (
                       <div key={field}>
-                        <label className="form-label capitalize">{field.replace(/([A-Z])/g,' $1')}</label>
+                        <label className="form-label capitalize">{field === 'brand' ? 'מותג (3 תווים)' : field.replace(/([A-Z])/g,' $1')}</label>
                         <input
-                          className="form-input"
+                          className={`form-input ${field === 'brand' ? 'uppercase font-mono tracking-widest' : ''}`}
                           value={val}
                           disabled={field === 'orderNumber'}
-                          onChange={e => setEditHeader(h => ({...h, [field]: e.target.value}))}
+                          maxLength={field === 'brand' ? 3 : undefined}
+                          onChange={e => setEditHeader(h => ({
+                            ...h,
+                            [field]: field === 'brand' ? e.target.value.toUpperCase() : e.target.value,
+                          }))}
                         />
                       </div>
                     ))}
