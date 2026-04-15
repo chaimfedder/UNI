@@ -29,7 +29,7 @@
  * Returns: { imported: number, packingNumbers: string[] }
  */
 
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { batchSyncBoxesToFirebase } from './packing';
 
 // ── Main entry point ──────────────────────────────────────────────────────────

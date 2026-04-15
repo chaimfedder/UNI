@@ -25,7 +25,7 @@
  * File name: PL{firstPackingNumber}_{DD-MM-YYYY}.xlsx
  */
 
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 export function exportPackingToExcel(allBoxes) {
     if (!allBoxes || allBoxes.length === 0) {
