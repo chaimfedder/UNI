@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="pl" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packing System | System Pakowania</title>
+   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Model & Finish Colors */
+        .finish-B { background-color: #FF0000; color: white; }
+        .finish-D { background-color: #90EE90; color: black; }
+        .finish-S { background-color: #C0C0C0; color: black; }
+        .finish-R { background-color: #FFFFFF; color: black; border: 2px solid black; }
+        
+        .model-K02 { background-color: #000080; color: white; }
+        .model-K03 { background-color: #800020; color: white; }
+        .model-K04 { background-color: #808080; color: white; }
+        .model-K05 { background-color: #FFFFFF; color: black; border: 2px solid black; }
+        .model-K06 { background-color: #FFD700; color: black; }
+        .model-K88 { background-color: #FFFF00; color: black; }
+        .model-K82 { background-color: #8B4513; color: white; }
+        .model-F92, .model-D92 { background-color: #87CEEB; color: black; }
+        .model-F94, .model-D94 { background-color: #000080; color: white; }
+        .model-F95, .model-D95 { background-color: #C0C0C0; color: black; }
+
+        /* Warning Modal Styles */
+        .warning-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .warning-modal-overlay:not(.hidden) {
+            display: flex;
+        }
+        .warning-modal {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            border-radius: 14px;
+            padding: 28px;
+            min-width: 280px;
+            max-width: 350px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 3px solid #fbbf24;
+            animation: warningPulse 0.5s ease-out;
+        }
+        @keyframes warningPulse {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .warning-icon {
+            font-size: 56px;
+            color: #fbbf24;
+            text-align: center;
+            margin-bottom: 14px;
+            animation: shake 0.5s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .warning-title {
+            font-size: 30px;
+            font-weight: 800;
+            color: white;
+            text-align: center;
+            margin-bottom: 14px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .warning-message {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fef3c7;
+            text-align: center;
+            margin-bottom: 21px;
+        }
+        .warning-buttons {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+        }
+        .warning-btn {
+            padding: 10px 35px;
+            font-size: 17px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+        }
+        .warning-btn:hover {
+            transform: scale(1.05);
+        }
+        .warning-btn-yes {
+            background-color: #22c55e;
+            color: white;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+        }
+        .warning-btn-yes:hover {
+            background-color: #16a34a;
+        }
+        .warning-btn-no {
+            background-color: #6b7280;
+            color: white;
+            box-shadow: 0 4px 15px rgba(107, 114, 128, 0.4);
+        }
+        .warning-btn-no:hover {
+            background-color: #4b5563;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+    <div class="max-w-4xl mx-auto p-6 space-y-6">
+        <!-- Packing Summary -->
+        <div class="bg-white shadow-lg rounded-xl p-6">
+            <div class="flex justify-between items-center border-b pb-4 mb-4">
+                <h2 class="text-2xl font-bold text-blue-700">Packing Summary</h2>
+                <div class="space-x-3">
+                    <button id="exportAllButton" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-md">
+                        Export to Excel
+                    </button>
+                    <button id="saveBackupButton" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md">
+                        Save Backup
+                    </button>
+                    <label class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer shadow-md">
+                        Load Backup
+                        <input type="file" id="loadBackupInput" accept=".json" class="hidden">
+                    </label>
+                    <button id="clearAllButton" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-md">
+                        Clear All
+                    </button>
+                   <button id="deleteMultipleButton" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 shadow-md">
+                        Delete Multiple Boxes
+                    </button>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <p class="text-lg text-gray-600">Total Boxes: <span id="totalBoxes" class="font-semibold">0</span></p>
+                <button id="showMissingButton" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md text-sm">
+                    Show Missing Boxes
+                </button>
+                <!-- Missing Boxes Alert -->
+                <div id="missingAlert" class="hidden px-4 py-2 bg-orange-100 border-2 border-orange-500 rounded-lg animate-pulse">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-exclamation-triangle text-orange-600 text-xl"></i>
+                        <div>
+                            <div class="font-bold text-orange-800">Missing Boxes! / Brakujące pudełka!</div>
+                            <div id="missingCount" class="text-sm text-orange-700"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Packing Form -->
+        <div class="bg-white shadow-lg rounded-xl p-6 space-y-6">
+            <!-- Box Settings Grid -->
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Left Column -->
+                <div class="grid grid-rows-2 gap-4">
+                    <!-- Box Size Selection -->
+                    <div>
+                        <label class="block text-lg font-medium mb-2">Box Size / Rozmiar Pudełka:</label>
+                        <div class="flex gap-2">
+                            <button type="button" id="boxSizeS" data-size="S" class="box-size-btn w-full p-3 border rounded-lg hover:bg-blue-200 flex items-center justify-center">
+                                S <i class="fas fa-box ml-2"></i>
+                                <span class="text-xs ml-2 text-gray-500">(36x36)</span>
+                            </button>
+                            <button type="button" id="boxSizeM" data-size="M" class="box-size-btn w-full p-3 border rounded-lg hover:bg-blue-200 flex items-center justify-center">
+                                M <i class="fas fa-box ml-2"></i>
+                                <span class="text-xs ml-2 text-gray-500">(40x40)</span>
+                            </button>
+                            <button type="button" id="boxSizeL" data-size="L" class="box-size-btn w-full p-3 border rounded-lg hover:bg-blue-200 flex items-center justify-center">
+                                L <i class="fas fa-box ml-2"></i>
+                                <span class="text-xs ml-2 text-gray-500">(45x45)</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Finish Brim Selection -->
+                    <div>
+                        <label class="block text-lg font-medium mb-2">Finish Brim / Wykończenie Krawędzi:</label>
+                        <div class="flex gap-2">
+                            <button type="button" id="finishBrimS" data-brim="S" class="finish-brim-btn w-full p-3 border-2 border-black rounded-lg hover:bg-blue-200 bg-white flex items-center justify-center">
+                                <span class="text-3xl font-bold text-black">S</span>
+                            </button>
+                            <button type="button" id="finishBrimR" data-brim="R" class="finish-brim-btn w-full p-3 border-2 border-black rounded-lg hover:bg-blue-200 bg-white flex items-center justify-center">
+                                <span class="text-3xl font-bold text-black">R</span>
+                            </button>
+                            <button type="button" id="finishBrimB" data-brim="B" class="finish-brim-btn w-full p-3 border-2 border-black rounded-lg hover:bg-blue-200 bg-white flex items-center justify-center">
+                                <span class="text-3xl font-bold text-black">B</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-lg font-medium mb-2">Packing No. / Nr Pakowania:</label>
+                        <input type="text" id="packingNumber" class="w-full p-3 border rounded-lg" value="1">
+                    </div>
+                    <div>
+                        <label class="block text-lg font-medium mb-2">Box No. / Nr Pudełka:</label>
+                        <input type="text" id="boxNumber" class="w-full p-3 border rounded-lg" value="1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <form id="scanForm">
+                    <div class="space-y-2">
+                        <div class="flex items-end gap-3 w-full">
+                            <div class="flex-1">
+                                <label class="block text-lg font-medium text-gray-700 mb-1">Scan Barcode / Skanuj Kod Kreskowy:</label>
+                                <input type="text" id="barcodeInput" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Barcode / Kod Kreskowy" autocomplete="off">
+                            </div>
+                            <div class="w-1/3">
+                                <label class="block text-lg font-medium text-gray-700 mb-1">Order / Zamówienie:</label>
+                                <input type="text" id="orderNumber" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Order / Zamówienie">
+                            </div>
+                            <div class="flex items-center justify-center">
+                                <button type="submit" class="h-12 px-6 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 ml-3">
+                                    Add / Dodaj
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Items List Section -->
+            <div class="mt-6 flex gap-4">
+                <div class="flex-1">
+                    <h3 class="text-lg font-medium mb-3 text-gray-700">Items in Current Box / Przedmioty w Pudełku:</h3>
+                    <div id="scannedItems" class="bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto border border-gray-200">
+                    </div>
+                </div>
+                <div class="w-48 flex items-center">
+                    <div id="boxSummary" class="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center w-full">
+                        <div class="font-bold text-2xl text-blue-700" id="totalItemsCount">0</div>
+                        <div class="text-sm text-gray-600">Total Items / Razem Przedmiotów</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Box Actions -->
+            <div class="space-y-4">
+                <button id="completeButton" class="w-full px-6 py-4 bg-green-600 text-white text-lg font-semibold rounded-xl hover:bg-green-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    <i class="fas fa-box-check mr-2"></i>
+                    Complete Box / Zakończ pudełko
+                </button>
+                <button id="cancelEditButton" class="w-full px-6 py-4 bg-gray-600 text-white text-lg font-semibold rounded-xl hover:bg-gray-700 transition-colors shadow-md hidden flex items-center justify-center">
+                    <i class="fas fa-times mr-2"></i>
+                    Cancel Edit / Anuluj edycję
+                </button>
+            </div>
+        </div>
+
+        <!-- Packed Boxes -->
+        <div class="bg-white shadow-lg rounded-xl p-6">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6">Packed Boxes / Spakowane pudełka</h3>
+            <div id="boxesList" class="space-y-4">
+            </div>
+        </div>
+
+        <!-- Single Alert Component -->
+        <div id="alert" class="hidden fixed bottom-4 right-4 p-4 rounded-xl shadow-lg bg-white border border-gray-200 max-w-md text-lg font-medium">
+        </div>
+
+        <!-- Scan Pop-up Box -->
+        <div id="scanPopup" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-8 rounded-xl shadow-2xl border-4 border-black z-50 text-center min-w-[300px] min-h-[250px] flex flex-col justify-center items-center">
+            <div id="popupModel" class="text-4xl font-bold mb-4"></div>
+            <div id="popupSize" class="text-5xl font-bold mb-4"></div>
+            <div id="popupBrim" class="text-3xl font-bold"></div>
+            <div id="popupFinish" class="text-3xl font-bold mt-2"></div>
+        </div>
+<!-- Delete Multiple Modal -->
+        <div id="deleteMultipleModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-xl shadow-2xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">Delete Multiple Boxes / Usuń wiele pudełek</h3>
+                
+                <div class="mb-4">
+                    <label class="block text-lg font-medium mb-2">Paste Box Numbers / Wklej numery pudełek:</label>
+                    <textarea id="boxNumbersInput" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 h-32" placeholder="Example: 1, 2, 3, 4 or one per line"></textarea>
+                    <p class="text-sm text-gray-500 mt-1">You can paste from Excel or enter manually, separated by comma, space, or new line</p>
+                </div>
+
+                <div id="deletePreview" class="mb-4 p-4 bg-gray-50 rounded-lg border hidden">
+                    <h4 class="font-bold text-lg mb-2">Preview / Podgląd:</h4>
+                    <div id="deletePreviewContent"></div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button id="previewDeleteButton" class="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">
+                        Preview / Podgląd
+                    </button>
+                    <button id="confirmDeleteButton" class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Confirm Delete / Potwierdź usunięcie
+                    </button>
+                    <button id="cancelDeleteButton" class="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold">
+                        Cancel / Anuluj
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Missing Boxes Modal -->
+        <div id="missingBoxesModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-xl shadow-2xl p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">Missing Boxes / Brakujące pudełka</h3>
+                
+                <div id="missingBoxesContent" class="mb-4">
+                    <!-- Content will be added dynamically -->
+                </div>
+
+                <div class="flex justify-end">
+                    <button id="closeMissingButton" class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold">
+                        Close / Zamknij
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warning Modal for Packing Rules -->
+        <div id="warningModal" class="hidden warning-modal-overlay">
+            <div class="warning-modal">
+                <div class="warning-icon">⚠️</div>
+                <div class="warning-title">UWAGA!</div>
+                <div id="warningMessage" class="warning-message"></div>
+                <div class="warning-buttons">
+                    <button id="warningYesBtn" class="warning-btn warning-btn-yes">TAK</button>
+                    <button id="warningNoBtn" class="warning-btn warning-btn-no">NIE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+// Global State
+        const State = {
+            scannedItems: [],
+            allBoxes: [],
+            selectedBoxSize: '',
+            selectedFinishBrim: '',
+            lastKFinishBrim: '',
+            isEditMode: false,
+            editingBoxIndex: null
+        };
+
+        // Utility Functions
+        const Utils = {
+            showAlert: (config) => {
+                const alert = document.getElementById('alert');
+                alert.textContent = config.message;
+                alert.className = `fixed bottom-4 right-4 p-4 rounded shadow-lg ${
+                    config.type === 'error' ? 'bg-red-500' : 'bg-green-500'
+                } text-white`;
+                
+                setTimeout(() => {
+                    alert.className = 'hidden';
+                }, 3000);
+            },
+
+            showScanPopup: (item) => {
+                const popup = document.getElementById('scanPopup');
+                const modelElement = document.getElementById('popupModel');
+                const sizeElement = document.getElementById('popupSize');
+                const brimElement = document.getElementById('popupBrim');
+                const finishElement = document.getElementById('popupFinish');
+                
+                modelElement.innerHTML = `<span class="text-sm">Model:</span> <span class="text-5xl font-extrabold">${item.model}</span>`;
+                sizeElement.innerHTML = `<span class="text-sm">Rozmiar:</span> <span class="text-6xl font-extrabold">${item.size}</span>`;
+                brimElement.innerHTML = `<span class="text-sm">Brim:</span> <span class="text-4xl font-extrabold">${item.brim}</span>`;
+                
+                let finishColor = 'inherit';
+                if (item.finishBrim === 'B') {
+                    finishColor = '#FF0000';
+                } else if (item.finishBrim === 'D') {
+                    finishColor = '#008000';
+                } else if (item.finishBrim === 'S') {
+                    finishColor = '#C0C0C0';
+                } else if (item.finishBrim === 'R') {
+                    finishColor = '#000000';
+                }
+                
+                finishElement.innerHTML = `<span class="text-sm">Wykończenie:</span> <span style="color: ${finishColor}; font-size: 2.25rem; font-weight: 800;">${item.finishBrim}</span>`;
+                
+                let modelColorClass = `model-${item.model}`;
+                popup.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 p-8 rounded-xl shadow-2xl border-4 border-black z-50 text-center min-w-[300px] min-h-[250px] flex flex-col justify-center items-center';
+                
+                let bgColor, textColor;
+                const modelElements = document.querySelectorAll(`.${modelColorClass}`);
+                if (modelElements.length > 0) {
+                    const modelStyle = window.getComputedStyle(modelElements[0]);
+                    bgColor = modelStyle.backgroundColor;
+                    textColor = modelStyle.color;
+                } else {
+                    if (item.model === 'K02') {
+                        bgColor = '#000080'; textColor = 'white';
+                    } else if (item.model === 'K03') {
+                        bgColor = '#800020'; textColor = 'white';
+                    } else if (item.model === 'K04') {
+                        bgColor = '#808080'; textColor = 'white';
+                    } else if (item.model === 'K05') {
+                        bgColor = '#FFFFFF'; textColor = 'black';
+                    } else if (item.model === 'K06') {
+                        bgColor = '#FFD700'; textColor = 'black';
+                    } else if (item.model === 'K88') {
+                        bgColor = '#FFFF00'; textColor = 'black';
+                    } else if (item.model === 'K82') {
+                        bgColor = '#8B4513'; textColor = 'white';
+                    } else if (item.model === 'F92' || item.model === 'D92') {
+                        bgColor = '#87CEEB'; textColor = 'black';
+                    } else if (item.model === 'F94' || item.model === 'D94') {
+                        bgColor = '#000080'; textColor = 'white';
+                    } else if (item.model === 'F95' || item.model === 'D95') {
+                        bgColor = '#C0C0C0'; textColor = 'black';
+                    } else {
+                        const modelFirstChar = item.model.charAt(0).toUpperCase();
+                        if (modelFirstChar === 'F') {
+                            bgColor = '#FF0000'; textColor = 'white';
+                        } else if (modelFirstChar === 'D') {
+                            bgColor = '#90EE90'; textColor = 'black';
+                        } else if (modelFirstChar === 'K') {
+                            bgColor = '#000080'; textColor = 'white';
+                        } else {
+                            bgColor = '#808080'; textColor = 'white';
+                        }
+                    }
+                }
+
+                popup.style.backgroundColor = bgColor;
+                popup.style.color = textColor;
+                popup.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    popup.classList.add('hidden');
+                }, 3000);
+            },
+
+            parseBarcode: (barcode) => {
+                if (barcode.length !== 10) {
+                    throw new Error('Barcode must be 10 characters / Kod kreskowy musi mieć 10 znaków');
+                }
+                
+                return {
+                    model: barcode.substring(0, 3),
+                    height: barcode.charAt(3),
+                    brim: barcode.substring(4, 6),
+                    size: barcode.substring(8, 10),
+                    barcode: barcode
+                };
+            },
+
+            groupScannedItems: () => {
+                const groupedItems = new Map();
+                
+                State.scannedItems.forEach(item => {
+                    const baseKey = `${item.model}-${item.height}-${item.brim}-${item.orderNumber}-${item.finishBrim}`;
+                    
+                    if (groupedItems.has(baseKey)) {
+                        const group = groupedItems.get(baseKey);
+                        const size = parseInt(item.size);
+                        group.sizes[size] = (group.sizes[size] || 0) + 1;
+                        group.totalQuantity += 1;
+                    } else {
+                        const sizes = {};
+                        const size = parseInt(item.size);
+                        sizes[size] = 1;
+                        groupedItems.set(baseKey, {
+                            model: item.model,
+                            height: item.height,
+                            brim: item.brim,
+                            orderNumber: item.orderNumber,
+                            finishBrim: item.finishBrim,
+                            sizes: sizes,
+                            totalQuantity: 1
+                        });
+                    }
+                });
+
+                return groupedItems;
+            },
+
+            isBoxNumberExists: (boxNumber) => {
+                return State.allBoxes.some(box => box.boxNumber === boxNumber);
+            }
+        };
+
+        // Packing Rules Validation
+        const PackingRules = {
+            // Play warning beep sound
+            playWarningSound: () => {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = 800;
+                oscillator.type = 'square';
+                gainNode.gain.value = 0.3;
+
+                oscillator.start();
+
+                // Beep pattern: beep-beep-beep
+                setTimeout(() => { gainNode.gain.value = 0; }, 150);
+                setTimeout(() => { gainNode.gain.value = 0.3; }, 200);
+                setTimeout(() => { gainNode.gain.value = 0; }, 350);
+                setTimeout(() => { gainNode.gain.value = 0.3; }, 400);
+                setTimeout(() => { gainNode.gain.value = 0; }, 550);
+                setTimeout(() => { oscillator.stop(); }, 600);
+            },
+
+            checkRules: (newItem) => {
+                const warnings = [];
+
+                // כלל 1: בדיקת BRIM שונה
+                const existingBrims = [...new Set(State.scannedItems.map(item => item.brim))];
+                if (existingBrims.length > 0 && !existingBrims.includes(newItem.brim)) {
+                    warnings.push('Różne rozmiary brzegu!');
+                }
+
+                // כלל 2: בדיקת מודל שונה
+                const existingModels = [...new Set(State.scannedItems.map(item => item.model))];
+                if (existingModels.length > 0 && !existingModels.includes(newItem.model)) {
+                    warnings.push('Pakujesz różne modele!');
+                }
+
+                // כלל 3: בדיקת יותר מ-3 מאותה מידה
+                const sizeCount = State.scannedItems.filter(item => item.size === newItem.size).length;
+                if (sizeCount >= 3) {
+                    warnings.push('Więcej niż 3 w tym rozmiarze!');
+                }
+
+                return warnings;
+            },
+
+            showWarning: async (warnings) => {
+                if (warnings.length === 0) return true;
+
+                // Play warning sound
+                PackingRules.playWarningSound();
+
+                const modal = document.getElementById('warningModal');
+                const messageEl = document.getElementById('warningMessage');
+                const yesBtn = document.getElementById('warningYesBtn');
+                const noBtn = document.getElementById('warningNoBtn');
+
+                // Show all warnings
+                messageEl.innerHTML = warnings.join('<br><br>');
+                modal.classList.remove('hidden');
+
+                return new Promise((resolve) => {
+                    const handleYes = () => {
+                        modal.classList.add('hidden');
+                        yesBtn.removeEventListener('click', handleYes);
+                        noBtn.removeEventListener('click', handleNo);
+                        resolve(true);
+                    };
+
+                    const handleNo = () => {
+                        modal.classList.add('hidden');
+                        yesBtn.removeEventListener('click', handleYes);
+                        noBtn.removeEventListener('click', handleNo);
+                        resolve(false);
+                    };
+
+                    yesBtn.addEventListener('click', handleYes);
+                    noBtn.addEventListener('click', handleNo);
+                });
+            }
+        };
+
+        // UI Manager
+        const UI = {
+            updateScannedItemsList: () => {
+                try {
+                    const container = document.getElementById('scannedItems');
+                    const groupedItems = Utils.groupScannedItems();
+                    container.innerHTML = Array.from(groupedItems.values()).map(item => {
+                        const sizesStr = Object.entries(item.sizes)
+                            .map(([size, quantity]) => `${size}: ${quantity}`)
+                            .join(', ');
+                        
+                        const modelColorClass = `model-${item.model}`;
+                        const finishColorClass = `finish-${item.finishBrim}`;
+                        return `
+                            <div class="border-b py-1 ${modelColorClass} ${finishColorClass}">
+                                <div class="flex justify-between items-center">
+                                    <div class="flex-1">
+                                        <div class="font-medium">
+                                            Type: ${item.model.charAt(0)} | 
+                                            Model: ${item.model} | 
+                                            Height: ${item.height} | 
+                                            Brim: ${item.brim} | 
+                                            Finish Brim: 
+                                            <span class="font-bold" style="color: 
+                                                ${item.finishBrim === 'B' ? '#FF0000' : 
+                                                  item.finishBrim === 'D' ? '#008000' : 
+                                                  item.finishBrim === 'S' ? '#C0C0C0' : 
+                                                  item.finishBrim === 'R' ? '#FFFFFF' : 'inherit'}">
+                                                ${item.finishBrim}
+                                            </span> |
+                                            Order: ${item.orderNumber} | 
+                                            <span class="text-sm font-bold text-gray-800 bg-gray-200 p-1 rounded inline-block mt-1">
+                                                Sizes (Quantity): ${sizesStr}
+                                            </span>
+                                            <span class="text-sm font-bold text-gray-800 bg-gray-200 p-1 rounded inline-block mt-1 ml-1">
+                                                Total: ${item.totalQuantity}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button onclick="UI.removeItem('${item.model}', '${item.height}', '${item.brim}', '${item.orderNumber}', '${item.finishBrim}')" 
+                                        class="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm">
+                                        Remove / Usuń
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    document.getElementById('totalItemsCount').textContent = State.scannedItems.length;
+                    UI.updateCompleteButtonState();
+                } catch (error) {
+                    console.error('Error updating list:', error);
+                    Utils.showAlert({ message: 'Error updating list / Błąd aktualizacji listy', type: 'error' });
+                }
+            },
+
+            updateBoxesList: () => {
+                const container = document.getElementById('boxesList');
+                document.getElementById('totalBoxes').textContent = State.allBoxes.length;
+                
+                // Update missing boxes alert
+                BoxManager.updateMissingAlert();
+
+                container.innerHTML = State.allBoxes.map((box, index) => `
+                    <div class="bg-gray-50 p-3 rounded border">
+                        <div class="flex justify-between items-center">
+                            <div class="font-medium">
+                                Box No. ${box.boxNumber} | Packing: ${box.packingNumber} | Size: ${box.boxSize}
+                            </div>
+                            <div class="space-x-2">
+                                <button onclick="BoxManager.editBox(${index})" 
+                                    class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                    Edit / Edytuj
+                                </button>
+                                <button onclick="BoxManager.deleteBox(${index})" 
+                                    class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
+                                    Delete / Usuń
+                                </button>
+                            </div>
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1">
+                            ${Object.entries(box.items).map(([key, item]) => `
+                                <div>
+                                    Type: ${item.model.charAt(0)} | 
+                                    Model: ${item.model} | 
+                                    Height: ${item.height} | 
+                                    Brim: ${item.brim} | 
+                                    Finish Brim: ${item.finishBrim} | 
+                                    Order: ${item.orderNumber} | 
+                                    Sizes: ${Object.entries(item.sizes)
+                                        .map(([size, qty]) => `${size}:${qty}`)
+                                        .join(', ')}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            },
+
+            updateCompleteButtonState: () => {
+                const completeButton = document.getElementById('completeButton');
+                completeButton.disabled = 
+                    State.scannedItems.length === 0 || 
+                    !document.getElementById('packingNumber').value || 
+                    !document.getElementById('boxNumber').value ||
+                    !State.selectedBoxSize;
+            },
+
+            removeItem: (model, height, brim, orderNumber, finishBrim) => {
+                const indexToRemove = State.scannedItems.findLastIndex(item => 
+                    item.model === model &&
+                    item.height === height &&
+                    item.brim === brim &&
+                    item.orderNumber === orderNumber &&
+                    item.finishBrim === finishBrim
+                );
+
+                if (indexToRemove !== -1) {
+                    State.scannedItems.splice(indexToRemove, 1);
+                    UI.updateScannedItemsList();
+                    Utils.showAlert({ message: 'Item removed successfully / Przedmiot został usunięty', type: 'success' });
+                }
+            },
+
+            resetForm: () => {
+                State.isEditMode = false;
+                State.editingBoxIndex = null;
+                State.scannedItems = [];
+                State.selectedBoxSize = '';
+                State.selectedFinishBrim = '';
+                State.lastKFinishBrim = '';
+                
+                document.getElementById('orderNumber').value = '';
+                document.getElementById('barcodeInput').value = '';
+                
+                document.getElementById('completeButton').textContent = 'Complete Box / Zakończ pudełko';
+                document.getElementById('cancelEditButton').classList.add('hidden');
+                
+                document.querySelectorAll('.box-size-btn').forEach(btn => {
+                    btn.classList.remove('bg-blue-500', 'text-white');
+                });
+                
+                document.querySelectorAll('.finish-brim-btn').forEach(btn => {
+                    btn.classList.remove('bg-blue-500', 'text-white');
+                    if (btn.dataset.brim === 'R') {
+                        btn.classList.remove('bg-gray-300');
+                        btn.classList.add('bg-white', 'border-2', 'border-black');
+                    } else {
+                        btn.classList.add('bg-gray-300');
+                    }
+                });
+
+                BoxManager.initializeNewBox();
+                UI.updateScannedItemsList();
+                BoxManager.updateMissingAlert();
+            }
+        };
+// Box Manager
+        const BoxManager = {
+            initializeNewBox: () => {
+                const packingNumber = document.getElementById('packingNumber').value;
+                
+                if (packingNumber && State.allBoxes.length > 0) {
+                    const nextBoxNumber = BoxManager.getNextBoxNumber(packingNumber);
+                    document.getElementById('boxNumber').value = nextBoxNumber;
+                    document.getElementById('packingNumber').value = packingNumber;
+                } else if (State.allBoxes.length > 0) {
+                    const lastBox = State.allBoxes[State.allBoxes.length - 1];
+                    document.getElementById('boxNumber').value = String(parseInt(lastBox.boxNumber) + 1);
+                    document.getElementById('packingNumber').value = lastBox.packingNumber;
+                } else {
+                    document.getElementById('boxNumber').value = "1";
+                }
+                UI.updateCompleteButtonState();
+            },
+
+            completeBox: () => {
+                try {
+                    if (!State.selectedBoxSize) {
+                        Utils.showAlert({ message: 'Please select box size / Wybierz rozmiar pudełka', type: 'error' });
+                        return;
+                    }
+
+                    const boxNumber = document.getElementById('boxNumber').value;
+
+                    if (!State.isEditMode && Utils.isBoxNumberExists(boxNumber)) {
+                        Utils.showAlert({ message: 'Box number already exists / Numer pudełka już istnieje', type: 'error' });
+                        return;
+                    } else if (State.isEditMode && Utils.isBoxNumberExists(boxNumber)) {
+                        const originalBoxNumber = State.allBoxes[State.editingBoxIndex].boxNumber;
+                        if (boxNumber !== originalBoxNumber && Utils.isBoxNumberExists(boxNumber)) {
+                            Utils.showAlert({ message: 'Box number already exists / Numer pudełka już istnieje', type: 'error' });
+                            return;
+                        }
+                    }
+
+                    const boxData = {
+                        packingNumber: document.getElementById('packingNumber').value,
+                        boxNumber: boxNumber,
+                        boxSize: State.selectedBoxSize,
+                        timestamp: new Date().toISOString(),
+                        items: Object.fromEntries(Utils.groupScannedItems())
+                    };
+
+                    if (State.isEditMode && State.editingBoxIndex !== null) {
+                        State.allBoxes[State.editingBoxIndex] = boxData;
+                    } else {
+                        State.allBoxes.push(boxData);
+                    }
+
+                    UI.updateBoxesList();
+                    Utils.showAlert({ message: 'Box saved successfully / Pudełko zostało zapisane', type: 'success' });
+                    UI.resetForm();
+                } catch (error) {
+                    console.error('Error completing box:', error);
+                    Utils.showAlert({ message: 'Error saving box / Błąd podczas zapisywania pudełka', type: 'error' });
+                }
+            },
+
+            editBox: (index) => {
+                State.isEditMode = true;
+                State.editingBoxIndex = index;
+                const box = State.allBoxes[index];
+                
+                document.getElementById('packingNumber').value = box.packingNumber;
+                document.getElementById('boxNumber').value = box.boxNumber;
+                
+                document.querySelector(`[data-size="${box.boxSize}"]`).click();
+                
+                State.scannedItems = [];
+                Object.values(box.items).forEach(item => {
+                    Object.entries(item.sizes).forEach(([size, quantity]) => {
+                        for (let i = 0; i < quantity; i++) {
+                            State.scannedItems.push({
+                                model: item.model,
+                                height: item.height,
+                                brim: item.brim,
+                                size: size,
+                                orderNumber: item.orderNumber,
+                                finishBrim: item.finishBrim,
+                                barcode: `${item.model}${item.height}${item.brim}00${size}`
+                            });
+                        }
+                    });
+                });
+                
+                UI.updateScannedItemsList();
+                document.getElementById('completeButton').textContent = 'Update Box / Zaktualizuj pudełko';
+                document.getElementById('cancelEditButton').classList.remove('hidden');
+                
+                document.querySelector('.bg-white.shadow-lg.rounded-xl.p-6').scrollIntoView({ behavior: 'smooth' });
+            },
+
+            deleteBox: (index) => {
+                if (confirm('Are you sure you want to delete this box? / Czy na pewno chcesz usunąć to pudełko?')) {
+                    State.allBoxes.splice(index, 1);
+                    UI.updateBoxesList();
+                    Utils.showAlert({ 
+                        message: 'Box deleted successfully / Pudełko zostało usunięte', 
+                        type: 'success' 
+                    });
+                }
+            },
+
+            openDeleteMultipleModal: () => {
+                document.getElementById('deleteMultipleModal').classList.remove('hidden');
+                document.getElementById('boxNumbersInput').value = '';
+                document.getElementById('deletePreview').classList.add('hidden');
+                document.getElementById('confirmDeleteButton').disabled = true;
+            },
+
+            closeDeleteMultipleModal: () => {
+                document.getElementById('deleteMultipleModal').classList.add('hidden');
+            },
+
+            previewDelete: () => {
+                try {
+                    const input = document.getElementById('boxNumbersInput').value;
+                    
+                    if (!input.trim()) {
+                        Utils.showAlert({ message: 'Please enter box numbers / Wprowadź numery pudełek', type: 'error' });
+                        return;
+                    }
+
+                    const boxNumbers = input
+                        .split(/[\s,\n\r]+/)
+                        .map(num => num.trim())
+                        .filter(num => num !== '');
+
+                    if (boxNumbers.length === 0) {
+                        Utils.showAlert({ message: 'No valid box numbers found / Nie znaleziono prawidłowych numerów', type: 'error' });
+                        return;
+                    }
+
+                    const boxesToDelete = State.allBoxes.filter(box => 
+                        boxNumbers.includes(box.boxNumber.toString())
+                    );
+
+                    const foundNumbers = boxesToDelete.map(box => box.boxNumber);
+                    const notFoundNumbers = boxNumbers.filter(num => 
+                        !foundNumbers.includes(num) && !foundNumbers.includes(parseInt(num))
+                    );
+
+                    const previewContent = document.getElementById('deletePreviewContent');
+                    let html = `
+                        <div class="space-y-2">
+                            <div class="font-semibold text-lg">
+                                Total boxes to delete / Łącznie pudełek do usunięcia: 
+                                <span class="text-red-600">${boxesToDelete.length}</span>
+                            </div>
+                    `;
+
+                    if (boxesToDelete.length > 0) {
+                        html += `
+                            <div class="mt-3">
+                                <div class="font-semibold mb-2 text-green-700">Found boxes / Znalezione pudełka:</div>
+                                <div class="grid grid-cols-10 gap-2">
+                                    ${foundNumbers.map(num => 
+                                        `<span class="bg-green-100 text-green-800 px-2 py-1 rounded text-center">${num}</span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    if (notFoundNumbers.length > 0) {
+                        html += `
+                            <div class="mt-3">
+                                <div class="font-semibold mb-2 text-orange-700">Not found / Nie znaleziono:</div>
+                                <div class="grid grid-cols-10 gap-2">
+                                    ${notFoundNumbers.map(num => 
+                                        `<span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-center">${num}</span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    html += `</div>`;
+                    previewContent.innerHTML = html;
+                    document.getElementById('deletePreview').classList.remove('hidden');
+                    
+                    document.getElementById('confirmDeleteButton').disabled = boxesToDelete.length === 0;
+
+                    BoxManager.boxesToDelete = foundNumbers;
+
+                } catch (error) {
+                    console.error('Error in preview:', error);
+                    Utils.showAlert({ message: 'Error processing input / Błąd przetwarzania danych', type: 'error' });
+                }
+            },
+
+            confirmDeleteMultiple: () => {
+                if (!BoxManager.boxesToDelete || BoxManager.boxesToDelete.length === 0) {
+                    Utils.showAlert({ message: 'No boxes to delete / Brak pudełek do usunięcia', type: 'error' });
+                    return;
+                }
+
+                const count = BoxManager.boxesToDelete.length;
+                
+                if (confirm(`Are you sure you want to delete ${count} boxes? / Czy na pewno chcesz usunąć ${count} pudełek?`)) {
+                    State.allBoxes = State.allBoxes.filter(box => 
+                        !BoxManager.boxesToDelete.includes(box.boxNumber) && 
+                        !BoxManager.boxesToDelete.includes(parseInt(box.boxNumber))
+                    );
+
+                    UI.updateBoxesList();
+                    BoxManager.closeDeleteMultipleModal();
+                    
+                    Utils.showAlert({ 
+                        message: `Successfully deleted ${count} boxes / Pomyślnie usunięto ${count} pudełek`, 
+                        type: 'success' 
+                    });
+
+                    BoxManager.boxesToDelete = null;
+                }
+            },
+
+            findMissingBoxNumbers: (packingNumber) => {
+                const currentPackingBoxes = State.allBoxes
+                    .filter(box => box.packingNumber === packingNumber)
+                    .map(box => parseInt(box.boxNumber))
+                    .sort((a, b) => a - b);
+                
+                if (currentPackingBoxes.length === 0) {
+                    return [];
+                }
+                
+                const missingBoxes = [];
+                const maxBox = Math.max(...currentPackingBoxes);
+                
+                for (let i = 1; i <= maxBox; i++) {
+                    if (!currentPackingBoxes.includes(i)) {
+                        missingBoxes.push(i);
+                    }
+                }
+                
+                return missingBoxes;
+            },
+
+            getNextBoxNumber: (packingNumber) => {
+                const missingBoxes = BoxManager.findMissingBoxNumbers(packingNumber);
+                
+                if (missingBoxes.length > 0) {
+                    return missingBoxes[0].toString();
+                }
+                
+                const currentPackingBoxes = State.allBoxes
+                    .filter(box => box.packingNumber === packingNumber)
+                    .map(box => parseInt(box.boxNumber));
+                
+                if (currentPackingBoxes.length === 0) {
+                    return "1";
+                }
+                
+                const maxBox = Math.max(...currentPackingBoxes);
+                return (maxBox + 1).toString();
+            },
+
+            showMissingBoxes: () => {
+                const packingNumber = document.getElementById('packingNumber').value;
+                
+                if (!packingNumber) {
+                    Utils.showAlert({ message: 'Please enter packing number / Wprowadź numer pakowania', type: 'error' });
+                    return;
+                }
+                
+                const missingBoxes = BoxManager.findMissingBoxNumbers(packingNumber);
+                const content = document.getElementById('missingBoxesContent');
+                
+                if (missingBoxes.length === 0) {
+                    content.innerHTML = `
+                        <div class="text-center py-8">
+                            <div class="text-6xl mb-4">✅</div>
+                            <div class="text-xl font-semibold text-green-700">No missing boxes!</div>
+                            <div class="text-lg text-gray-600 mt-2">Brak brakujących pudełek!</div>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = `
+                        <div class="space-y-4">
+                            <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
+                                <div class="font-semibold text-lg mb-2">
+                                    Packing Number: <span class="text-orange-700">${packingNumber}</span>
+                                </div>
+                                <div class="font-semibold text-lg">
+                                    Total Missing: <span class="text-red-600">${missingBoxes.length}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 p-4 rounded-lg border">
+                                <div class="font-semibold mb-3 text-lg">Missing Box Numbers:</div>
+                                <div class="grid grid-cols-10 gap-2">
+                                    ${missingBoxes.map(num => 
+                                        `<span class="bg-red-100 text-red-800 px-3 py-2 rounded text-center font-semibold">${num}</span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('missingBoxesModal').classList.remove('hidden');
+            },
+
+            closeMissingBoxesModal: () => {
+                document.getElementById('missingBoxesModal').classList.add('hidden');
+            },
+
+            updateMissingAlert: () => {
+                const packingNumber = document.getElementById('packingNumber').value;
+                const missingAlert = document.getElementById('missingAlert');
+                const missingCountElement = document.getElementById('missingCount');
+                
+                if (!packingNumber || State.allBoxes.length === 0) {
+                    missingAlert.classList.add('hidden');
+                    return;
+                }
+                
+                const missingBoxes = BoxManager.findMissingBoxNumbers(packingNumber);
+                
+                if (missingBoxes.length > 0) {
+                    missingAlert.classList.remove('hidden');
+                    const firstMissing = missingBoxes.slice(0, 5).join(', ');
+                    const moreText = missingBoxes.length > 5 ? ` +${missingBoxes.length - 5} more` : '';
+                    missingCountElement.textContent = `${missingBoxes.length} missing: ${firstMissing}${moreText}`;
+                } else {
+                    missingAlert.classList.add('hidden');
+                }
+            }
+        };
+// File Manager
+        const FileManager = {
+            saveBackup: () => {
+                try {
+                    const data = JSON.stringify(State.allBoxes);
+                    const blob = new Blob([data], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    
+                    const packingNumber = document.getElementById('packingNumber').value;
+                    const currentBoxes = State.allBoxes.filter(box => box.packingNumber === packingNumber);
+                    const firstBox = Math.min(...currentBoxes.map(box => parseInt(box.boxNumber)));
+                    const lastBox = Math.max(...currentBoxes.map(box => parseInt(box.boxNumber)));
+                    
+                    const currentDate = new Date().toISOString().split('T')[0];
+                    const fileName = `Packing_${packingNumber}_Boxes_${firstBox}-${lastBox}_${currentDate}.json`;
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    a.click();
+                    
+                    URL.revokeObjectURL(url);
+                    Utils.showAlert({ message: 'Backup saved successfully / Kopia zapasowa została zapisana', type: 'success' });
+                } catch (error) {
+                    console.error('Error saving backup:', error);
+                    Utils.showAlert({ message: 'Error saving backup / Błąd podczas zapisywania kopii', type: 'error' });
+                }
+            },
+
+            loadBackup: (event) => {
+                try {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const loadedData = JSON.parse(e.target.result);
+                            
+                            if (!Array.isArray(loadedData)) {
+                                throw new Error('Invalid backup format');
+                            }
+                            
+                            State.allBoxes = loadedData;
+                            UI.updateBoxesList();
+                            
+                            if (State.allBoxes.length > 0) {
+                                const lastPackingNumber = State.allBoxes[State.allBoxes.length - 1].packingNumber;
+                                document.getElementById('packingNumber').value = lastPackingNumber;
+                                
+                                const currentBoxes = State.allBoxes.filter(box => box.packingNumber === lastPackingNumber);
+                                
+                                if (currentBoxes.length > 0) {
+                                    const maxBoxNumber = Math.max(...currentBoxes.map(box => parseInt(box.boxNumber)));
+                                    document.getElementById('boxNumber').value = (maxBoxNumber + 1).toString();
+                                }
+                            }
+                            
+                            Utils.showAlert({ message: 'Backup loaded successfully / Kopia została wczytana', type: 'success' });
+                        } catch (error) {
+                            console.error('Error parsing backup file:', error);
+                            Utils.showAlert({ message: 'Backup file is corrupted / Plik kopii jest uszkodzony', type: 'error' });
+                        }
+                    };
+                    reader.readAsText(file);
+                } catch (error) {
+                    console.error('Error loading backup:', error);
+                    Utils.showAlert({ message: 'Error loading backup / Błąd podczas wczytywania kopii', type: 'error' });
+                }
+            },
+
+            exportToExcel: () => {
+                try {
+                    if (typeof XLSX === 'undefined') {
+                        throw new Error('XLSX library is not loaded');
+                    }
+
+                    if (State.allBoxes.length === 0) {
+                        Utils.showAlert({ message: 'No data to export / Brak danych do eksportu', type: 'error' });
+                        return;
+                    }
+
+                    const currentDate = new Date();
+                    const formattedDate = `${String(currentDate.getDate()).padStart(2, '0')}-${
+                        String(currentDate.getMonth() + 1).padStart(2, '0')}-${currentDate.getFullYear()}`;
+
+                    const headerStyle = {
+                        font: { bold: true, color: { rgb: "FFFFFF" } },
+                        fill: { patternType: "solid", fgColor: { rgb: "4472C4" } },
+                        border: {
+                            top: { style: "thin", color: { rgb: "000000" } },
+                            bottom: { style: "thin", color: { rgb: "000000" } },
+                            left: { style: "thin", color: { rgb: "000000" } },
+                            right: { style: "thin", color: { rgb: "000000" } }
+                        },
+                        alignment: { horizontal: "center", vertical: "center" }
+                    };
+
+                    const dataStyle = {
+                        border: {
+                            top: { style: "thin", color: { rgb: "000000" } },
+                            bottom: { style: "thin", color: { rgb: "000000" } },
+                            left: { style: "thin", color: { rgb: "000000" } },
+                            right: { style: "thin", color: { rgb: "000000" } }
+                        },
+                        alignment: { horizontal: "right", vertical: "center" }
+                    };
+
+                    const emptyDataStyle = {
+                        border: {
+                            top: { style: "thin", color: { rgb: "000000" } },
+                            bottom: { style: "thin", color: { rgb: "000000" } },
+                            left: { style: "thin", color: { rgb: "000000" } },
+                            right: { style: "thin", color: { rgb: "000000" } }
+                        }
+                    };
+
+                    const titleStyle = {
+                        font: { bold: true, color: { rgb: "000000" }, sz: 12 },
+                        fill: { patternType: "solid", fgColor: { rgb: "E2EFDA" } },
+                        border: {
+                            top: { style: "thin", color: { rgb: "000000" } },
+                            bottom: { style: "thin", color: { rgb: "000000" } },
+                            left: { style: "thin", color: { rgb: "000000" } },
+                            right: { style: "thin", color: { rgb: "000000" } }
+                        },
+                        alignment: { horizontal: "center", vertical: "center" }
+                    };
+
+                    const subtitleStyle = {
+                        font: { bold: true, color: { rgb: "000000" } },
+                        fill: { patternType: "solid", fgColor: { rgb: "D9E1F2" } },
+                        border: {
+                            top: { style: "thin", color: { rgb: "000000" } },
+                            bottom: { style: "thin", color: { rgb: "000000" } },
+                            left: { style: "thin", color: { rgb: "000000" } },
+                            right: { style: "thin", color: { rgb: "000000" } }
+                        },
+                        alignment: { horizontal: "center", vertical: "center" }
+                    };
+
+                    const totalRowStyle = {
+                        font: { bold: true },
+                        fill: { patternType: "solid", fgColor: { rgb: "EEEEEE" } },
+                        border: {
+                            top: { style: "thin", color: { rgb: "000000" } },
+                            bottom: { style: "thin", color: { rgb: "000000" } },
+                            left: { style: "thin", color: { rgb: "000000" } },
+                            right: { style: "thin", color: { rgb: "000000" } }
+                        },
+                        alignment: { horizontal: "center", vertical: "center" }
+                    };
+
+                    const wb = XLSX.utils.book_new();
+
+                    const groupedByPacking = {};
+                    State.allBoxes.forEach(box => {
+                        if (!groupedByPacking[box.packingNumber]) {
+                            groupedByPacking[box.packingNumber] = [];
+                        }
+                        groupedByPacking[box.packingNumber].push(box);
+                    });
+
+                    const summaryData = {};
+                    const modelCounts = { K: 0, F: 0, D: 0, Other: 0 };
+                    const boxSizeCounts = { S: 0, M: 0, L: 0 };
+                    let totalBoxes = 0;
+
+                    State.allBoxes.forEach(box => {
+                        boxSizeCounts[box.boxSize] = (boxSizeCounts[box.boxSize] || 0) + 1;
+                        totalBoxes++;
+                        
+                        Object.values(box.items).forEach(item => {
+                            const key = `${item.orderNumber}-${item.model}`;
+                            if (!summaryData[key]) {
+                                summaryData[key] = {
+                                    orderNumber: item.orderNumber,
+                                    model: item.model,
+                                    totalQuantity: 0
+                                };
+                            }
+                            
+                            const itemTotal = item.totalQuantity || 0;
+                            summaryData[key].totalQuantity += itemTotal;
+                            
+                            const modelType = item.model.charAt(0).toUpperCase();
+                            if (modelType === 'K' || modelType === 'F' || modelType === 'D') {
+                                modelCounts[modelType] += itemTotal;
+                            } else {
+                                modelCounts.Other += itemTotal;
+                            }
+                        });
+                    });
+
+                    for (const [packingNumber, boxes] of Object.entries(groupedByPacking)) {
+                        const sortedBoxes = [...boxes].sort((a, b) => 
+                            parseInt(a.boxNumber) - parseInt(b.boxNumber)
+                        );
+                        
+                        const headers = [
+                            "BOX NO.", 
+                            "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62",
+                            "TOTAL IN BOX", "Type", "Model", "Height", "Brim", "Finish Brim", "Order Number", "Box Size"
+                        ];
+                        
+                        const ws = XLSX.utils.aoa_to_sheet([]);
+                        
+                        let rowCount = 0;
+                        let columnCount = headers.length;
+                        
+                        ws[XLSX.utils.encode_cell({r: rowCount, c: 0})] = { 
+                            v: `Packing Number: ${packingNumber}`, 
+                            s: titleStyle
+                        };
+
+                        ws[XLSX.utils.encode_cell({r: rowCount, c: 4})] = { 
+                            v: `Date: ${formattedDate}`, 
+                            s: titleStyle
+                        };
+                        
+                        rowCount += 2;
+                        
+                        headers.forEach((header, idx) => {
+                            ws[XLSX.utils.encode_cell({r: rowCount, c: idx})] = { 
+                                v: header, 
+                                s: headerStyle
+                            };
+                        });
+                        rowCount++;
+                        
+                        const sizeTotals = Array(12).fill(0);
+                        let packingTotal = 0;
+                        
+                        sortedBoxes.forEach(box => {
+                            Object.values(box.items).forEach(item => {
+                                const row = rowCount++;
+                                
+                                ws[XLSX.utils.encode_cell({r: row, c: 0})] = {
+                                    v: parseInt(box.boxNumber),
+                                    t: 'n',
+                                    s: dataStyle
+                                };
+                                
+                                for (let i = 1; i <= 12; i++) {
+                                    ws[XLSX.utils.encode_cell({r: row, c: i})] = { 
+                                        v: "", 
+                                        s: emptyDataStyle 
+                                    };
+                                }
+                                
+                                for (const [size, quantity] of Object.entries(item.sizes || {})) {
+                                    const numSize = parseInt(size);
+                                    if (!isNaN(numSize)) {
+                                        const sizeIndex = numSize - 51;
+                                        if (sizeIndex >= 0 && sizeIndex < 12) {
+                                            ws[XLSX.utils.encode_cell({r: row, c: sizeIndex + 1})] = {
+                                                v: quantity,
+                                                t: 'n',
+                                                s: dataStyle
+                                            };
+                                            sizeTotals[sizeIndex] += quantity;
+                                        }
+                                    }
+                                }
+                                
+                                const itemTotal = item.totalQuantity || 0;
+                                packingTotal += itemTotal;
+                                
+                                ws[XLSX.utils.encode_cell({r: row, c: 13})] = { v: itemTotal, t: 'n', s: dataStyle };
+                                ws[XLSX.utils.encode_cell({r: row, c: 14})] = { v: item.model ? item.model.charAt(0) : '', s: dataStyle };
+                                ws[XLSX.utils.encode_cell({r: row, c: 15})] = { v: item.model || '', s: dataStyle };
+                                ws[XLSX.utils.encode_cell({r: row, c: 16})] = { v: item.height || '', s: dataStyle };
+                                ws[XLSX.utils.encode_cell({r: row, c: 17})] = { v: item.brim || '', s: dataStyle };
+                                ws[XLSX.utils.encode_cell({r: row, c: 18})] = { v: item.finishBrim || '', s: dataStyle };
+                                ws[XLSX.utils.encode_cell({r: row, c: 19})] = { v: item.orderNumber || '', s: dataStyle };
+                                ws[XLSX.utils.encode_cell({r: row, c: 20})] = { v: box.boxSize || '', s: dataStyle };
+                            });
+                        });
+                        
+                        const totalRow = rowCount++;
+                        
+                        ws[XLSX.utils.encode_cell({r: totalRow, c: 0})] = { v: "TOTAL", s: totalRowStyle };
+                        
+                        for (let i = 0; i < 12; i++) {
+                            ws[XLSX.utils.encode_cell({r: totalRow, c: i + 1})] = { v: sizeTotals[i], t: 'n', s: totalRowStyle };
+                        }
+
+                        ws[XLSX.utils.encode_cell({r: totalRow, c: 13})] = { v: packingTotal, t: 'n', s: totalRowStyle };
+                        
+                        for (let i = 14; i <= 20; i++) {
+                            ws[XLSX.utils.encode_cell({r: totalRow, c: i})] = { v: "", s: totalRowStyle };
+                        }
+                        
+                        ws['!ref'] = XLSX.utils.encode_range({
+                            s: {r: 0, c: 0}, 
+                            e: {r: rowCount - 1, c: columnCount - 1}
+                        });
+                        
+                        ws['!cols'] = [
+                            { wch: 8 }, { wch: 4 }, { wch: 4 }, { wch: 4 }, { wch: 4 }, { wch: 4 }, { wch: 4 },
+                            { wch: 4 }, { wch: 4 }, { wch: 4 }, { wch: 4 }, { wch: 4 }, { wch: 4 },
+                            { wch: 12 }, { wch: 6 }, { wch: 8 }, { wch: 6 }, { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 6 }
+                        ];
+                        
+                        if (!ws['!merges']) {
+                            ws['!merges'] = [];
+                        }
+                        
+                        ws['!merges'].push(
+                            { s: {r: 0, c: 0}, e: {r: 0, c: 3} },
+                            { s: {r: 0, c: 4}, e: {r: 0, c: 7} }
+                        );
+                        
+                        XLSX.utils.book_append_sheet(wb, ws, `Packing ${packingNumber}`);
+                    }
+
+                    const summaryWs = XLSX.utils.aoa_to_sheet([]);
+                    let summaryRow = 0;
+
+                    summaryWs[XLSX.utils.encode_cell({r: summaryRow, c: 0})] = { 
+                        v: `Summary Report    Date: ${formattedDate}`, 
+                        s: titleStyle 
+                    };
+                    summaryRow += 2;
+
+                    const orderModelTitleRow = summaryRow;
+                    summaryWs[XLSX.utils.encode_cell({r: orderModelTitleRow, c: 0})] = { 
+                        v: "Summary by Order and Model", 
+                        s: subtitleStyle 
+                    };
+                    summaryRow++;
+
+                    summaryWs[XLSX.utils.encode_cell({r: summaryRow, c: 0})] = { v: "Order Number", s: headerStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: summaryRow, c: 1})] = { v: "Model", s: headerStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: summaryRow, c: 2})] = { v: "TOTAL", s: headerStyle };
+                    summaryRow++;
+
+                    const sortedSummary = Object.values(summaryData).sort((a, b) => {
+                        if (a.orderNumber !== b.orderNumber) {
+                            return a.orderNumber.localeCompare(b.orderNumber);
+                        }
+                        return a.model.localeCompare(b.model);
+                    });
+
+                    const firstDataRow = summaryRow;
+
+                    sortedSummary.forEach(item => {
+                        summaryWs[XLSX.utils.encode_cell({r: summaryRow, c: 0})] = { v: item.orderNumber || '', s: dataStyle };
+                        summaryWs[XLSX.utils.encode_cell({r: summaryRow, c: 1})] = { v: item.model || '', s: dataStyle };
+                        summaryWs[XLSX.utils.encode_cell({r: summaryRow, c: 2})] = { v: item.totalQuantity || 0, t: 'n', s: dataStyle };
+                        summaryRow++;
+                    });
+
+                    const grandTotalRow = summaryRow;
+                    const grandTotal = sortedSummary.reduce((sum, item) => sum + (item.totalQuantity || 0), 0);
+                    summaryWs[XLSX.utils.encode_cell({r: grandTotalRow, c: 0})] = { v: "TOTAL", s: totalRowStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: grandTotalRow, c: 1})] = { v: "", s: totalRowStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: grandTotalRow, c: 2})] = { v: grandTotal, t: 'n', s: totalRowStyle };
+
+                    summaryWs[XLSX.utils.encode_cell({r: orderModelTitleRow, c: 4})] = { v: "Summary by Model Type", s: subtitleStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow - 1, c: 4})] = { v: "Model Type", s: headerStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow - 1, c: 5})] = { v: "", s: headerStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow - 1, c: 6})] = { v: "TOTAL", s: headerStyle };
+
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow, c: 4})] = { v: "Model K", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow, c: 5})] = { v: "", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow, c: 6})] = { v: modelCounts.K || 0, t: 'n', s: dataStyle };
+
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 1, c: 4})] = { v: "Model F", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 1, c: 5})] = { v: "", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 1, c: 6})] = { v: modelCounts.F || 0, t: 'n', s: dataStyle };
+
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 2, c: 4})] = { v: "Model D", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 2, c: 5})] = { v: "", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 2, c: 6})] = { v: modelCounts.D || 0, t: 'n', s: dataStyle };
+
+                    let otherModelsRow = firstDataRow + 3;
+                    if ((modelCounts.Other || 0) > 0) {
+                        summaryWs[XLSX.utils.encode_cell({r: otherModelsRow, c: 4})] = { v: "Other Models", s: dataStyle };
+                        summaryWs[XLSX.utils.encode_cell({r: otherModelsRow, c: 5})] = { v: "", s: dataStyle };
+                        summaryWs[XLSX.utils.encode_cell({r: otherModelsRow, c: 6})] = { v: modelCounts.Other || 0, t: 'n', s: dataStyle };
+                        otherModelsRow++;
+                    }
+
+                    const totalModels = Object.values(modelCounts).reduce((a, b) => a + (b || 0), 0);
+                    summaryWs[XLSX.utils.encode_cell({r: otherModelsRow, c: 4})] = { v: "Total", s: totalRowStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: otherModelsRow, c: 5})] = { v: "", s: totalRowStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: otherModelsRow, c: 6})] = { v: totalModels, t: 'n', s: totalRowStyle };
+
+                    summaryWs[XLSX.utils.encode_cell({r: orderModelTitleRow, c: 8})] = { v: "Summary by Box Size", s: subtitleStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow - 1, c: 8})] = { v: "Box Size", s: headerStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow - 1, c: 9})] = { v: "", s: headerStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow - 1, c: 10})] = { v: "TOTAL", s: headerStyle };
+
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow, c: 8})] = { v: "Box Size S", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow, c: 9})] = { v: "", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow, c: 10})] = { v: boxSizeCounts.S || 0, t: 'n', s: dataStyle };
+
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 1, c: 8})] = { v: "Box Size M", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 1, c: 9})] = { v: "", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 1, c: 10})] = { v: boxSizeCounts.M || 0, t: 'n', s: dataStyle };
+
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 2, c: 8})] = { v: "Box Size L", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 2, c: 9})] = { v: "", s: dataStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 2, c: 10})] = { v: boxSizeCounts.L || 0, t: 'n', s: dataStyle };
+
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 3, c: 8})] = { v: "Total Boxes", s: totalRowStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 3, c: 9})] = { v: "", s: totalRowStyle };
+                    summaryWs[XLSX.utils.encode_cell({r: firstDataRow + 3, c: 10})] = { v: totalBoxes, t: 'n', s: totalRowStyle };
+
+                    const maxRow = Math.max(grandTotalRow, otherModelsRow, firstDataRow + 3);
+                    summaryWs['!ref'] = XLSX.utils.encode_range({
+                        s: {r: 0, c: 0}, 
+                        e: {r: maxRow, c: 10}
+                    });
+
+                    summaryWs['!cols'] = [
+                        { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 5 },
+                        { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 5 },
+                        { wch: 20 }, { wch: 12 }, { wch: 10 }
+                    ];
+
+                    summaryWs['!merges'] = [
+                        { s: {r: 0, c: 0}, e: {r: 0, c: 10} },
+                        { s: {r: orderModelTitleRow, c: 0}, e: {r: orderModelTitleRow, c: 2} },
+                        { s: {r: orderModelTitleRow, c: 4}, e: {r: orderModelTitleRow, c: 6} },
+                        { s: {r: orderModelTitleRow, c: 8}, e: {r: orderModelTitleRow, c: 10} }
+                    ];
+
+                    XLSX.utils.book_append_sheet(wb, summaryWs, "Summary");
+                    
+                    const firstPackingNumber = Object.keys(groupedByPacking)[0] || '0';
+                    const fileName = `PL${firstPackingNumber}_${formattedDate.replace(/-/g, '-')}.xlsx`;
+                    
+                    XLSX.writeFile(wb, fileName);
+                    
+                    Utils.showAlert({ message: 'Data exported successfully / Dane zostały wyeksportowane', type: 'success' });
+                } catch (error) {
+                    console.error('Error exporting to Excel:', error);
+                    Utils.showAlert({ 
+                        message: error.message || 'Error exporting to Excel / Błąd podczas eksportu do Excel', 
+                        type: 'error' 
+                    });
+                }
+            }
+        };
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.box-size-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    State.selectedBoxSize = btn.dataset.size;
+                    document.querySelectorAll('.box-size-btn').forEach(b => {
+                        b.classList.remove('bg-blue-500', 'text-white');
+                    });
+                    btn.classList.add('bg-blue-500', 'text-white');
+                    UI.updateCompleteButtonState();
+                });
+            });
+
+            document.querySelectorAll('.finish-brim-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const barcodeInput = document.getElementById('barcodeInput');
+                    const firstLetter = barcodeInput.value ? barcodeInput.value.charAt(0) : '';
+                    
+                    if (firstLetter === 'K' || !barcodeInput.value) {
+                        State.selectedFinishBrim = btn.dataset.brim;
+                        State.lastKFinishBrim = btn.dataset.brim;
+                        
+                        document.querySelectorAll('.finish-brim-btn').forEach(b => {
+                            b.classList.remove('bg-blue-500', 'text-white');
+                        });
+                        btn.classList.add('bg-blue-500', 'text-white');
+                    }
+                });
+            });
+
+                document.getElementById('scanForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                try {
+                    const barcodeInput = document.getElementById('barcodeInput');
+                    const orderNumber = document.getElementById('orderNumber').value;
+
+                    if (!barcodeInput.value) return;
+                    
+                    if (!orderNumber) {
+                        Utils.showAlert({ message: 'Please enter an order number / Wprowadź numer zamówienia', type: 'error' });
+                        return;
+                    }
+
+                    const parsedData = Utils.parseBarcode(barcodeInput.value);
+                    const firstLetter = parsedData.model.charAt(0).toUpperCase();
+                    const upperModel = firstLetter + parsedData.model.slice(1);
+                    
+                    let finishBrim = '';
+
+                    if (firstLetter === 'F') {
+                        finishBrim = 'B';
+                    } else if (firstLetter === 'D') {
+                        finishBrim = 'D';
+                    } else if (firstLetter === 'K') {
+                        if (State.lastKFinishBrim) {
+                            finishBrim = State.lastKFinishBrim;
+                        } else {
+                            Utils.showAlert({ message: 'Please select Finish Brim for K model / Wybierz wykończenie dla modelu K', type: 'error' });
+                            return;
+                        }
+                    }
+
+                    const newItem = {
+                        ...parsedData,
+                        model: upperModel,
+                        orderNumber,
+                        finishBrim,
+                        timestamp: new Date().toISOString()
+                    };
+             
+                    
+                    // בדיקת כללי אריזה
+                    const warnings = PackingRules.checkRules(newItem);
+                    const userConfirmed = await PackingRules.showWarning(warnings);
+                    
+                    if (!userConfirmed) {
+                        barcodeInput.value = '';
+                        barcodeInput.focus();
+                        return;
+                    }
+                    
+                    State.scannedItems.push(newItem);
+                    Utils.showScanPopup(newItem);
+
+                    
+                    barcodeInput.value = '';
+                    UI.updateScannedItemsList();
+                    barcodeInput.focus();
+                } catch (error) {
+                    Utils.showAlert({ message: error.message, type: 'error' });
+                }
+            });
+
+            document.getElementById('completeButton').addEventListener('click', BoxManager.completeBox);
+            document.getElementById('cancelEditButton').addEventListener('click', UI.resetForm);document.getElementById('exportAllButton').addEventListener('click', () => {
+                if (State.allBoxes.length === 0) {
+                    Utils.showAlert({ message: 'No data to export / Brak danych do eksportu', type: 'error' });
+                    return;
+                }
+                FileManager.exportToExcel();
+            });
+            document.getElementById('saveBackupButton').addEventListener('click', FileManager.saveBackup);
+            document.getElementById('loadBackupInput').addEventListener('change', FileManager.loadBackup);
+            document.getElementById('clearAllButton').addEventListener('click', () => {
+                if (confirm('Are you sure you want to delete all data? / Czy na pewno chcesz usunąć wszystkie dane?')) {
+                    State.allBoxes = [];
+                    UI.updateBoxesList();
+                    Utils.showAlert({ message: 'All data has been deleted / Wszystkie dane zostały usunięte', type: 'success' });
+                }
+            });
+
+            document.getElementById('deleteMultipleButton').addEventListener('click', BoxManager.openDeleteMultipleModal);
+            document.getElementById('previewDeleteButton').addEventListener('click', BoxManager.previewDelete);
+            document.getElementById('confirmDeleteButton').addEventListener('click', BoxManager.confirmDeleteMultiple);
+            document.getElementById('cancelDeleteButton').addEventListener('click', BoxManager.closeDeleteMultipleModal);
+
+            document.getElementById('deleteMultipleModal').addEventListener('click', (e) => {
+                if (e.target.id === 'deleteMultipleModal') {
+                    BoxManager.closeDeleteMultipleModal();
+                }
+            });
+
+            document.getElementById('showMissingButton').addEventListener('click', BoxManager.showMissingBoxes);
+            document.getElementById('closeMissingButton').addEventListener('click', BoxManager.closeMissingBoxesModal);
+
+            document.getElementById('missingBoxesModal').addEventListener('click', (e) => {
+                if (e.target.id === 'missingBoxesModal') {
+                    BoxManager.closeMissingBoxesModal();
+                }
+            });
+
+            document.getElementById('packingNumber').addEventListener('input', () => {
+                BoxManager.updateMissingAlert();
+            });
+
+            document.getElementById('barcodeInput').focus();
+
+            BoxManager.initializeNewBox();
+            UI.updateBoxesList();
+            UI.updateScannedItemsList();
+        });
+    </script>
+</body>
+</html>
