@@ -456,10 +456,16 @@ const FirebaseSync = {
     // Internal: keep packingLists/{pn} document alive with metadata
     async _upsertPackingList(packingNumber) {
         try {
-            await _db.collection('packingLists').doc(String(packingNumber)).set({
+            const ref = _db.collection('packingLists').doc(String(packingNumber));
+            const snap = await ref.get();
+            const data = {
                 packingNumber: String(packingNumber),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
+            };
+            if (!snap.exists) {
+                data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            }
+            await ref.set(data, { merge: true });
         } catch (err) {
             console.error('[Firebase] packingList upsert error:', err);
         }

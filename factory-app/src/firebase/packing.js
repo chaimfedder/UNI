@@ -240,9 +240,14 @@ export function subscribeToBoxesByPacking(packingNumber, callback) {
  * @returns {Function} unsubscribe
  */
 export function subscribeToPackingLists(callback) {
-  const q = query(collection(db, 'packingLists'), orderBy('createdAt', 'desc'));
-  return onSnapshot(q, snapshot => {
+  // No orderBy — documents created by PK.HTML may not have createdAt.
+  // Sort client-side by packingNumber descending instead.
+  return onSnapshot(collection(db, 'packingLists'), snapshot => {
     const lists = snapshot.docs.map(d => ({ _id: d.id, ...d.data() }));
+    lists.sort((a, b) => {
+      // Sort by packingNumber descending (newest first)
+      return parseInt(b.packingNumber) - parseInt(a.packingNumber);
+    });
     callback(lists);
   });
 }
