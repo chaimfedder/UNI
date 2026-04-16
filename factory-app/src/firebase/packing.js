@@ -221,15 +221,38 @@ export function subscribeToBoxes(callback) {
  * @returns {Function} unsubscribe
  */
 export function subscribeToBoxesByPacking(packingNumber, callback) {
-  const q = query(
-    collection(db, 'boxes'),
-    where('packingNumber', '==', String(packingNumber))
-  );
-  return onSnapshot(q, snapshot => {
-    const boxes = snapshot.docs.map(d => ({ _id: d.id, ...d.data() }));
-    boxes.sort((a, b) => parseInt(a.boxNumber) - parseInt(b.boxNumber));
-    callback(boxes);
+  // PK.HTML may store packingNumber as a number or string — try string first,
+  // then merge results with numeric match to handle both cases.
+  const strPN = String(packingNumber);
+  const numPN = Number(packingNumber);
+
+  const qStr = query(collection(db, 'boxes'), where('packingNumber', '==', strPN));
+  const qNum = query(collection(db, 'boxes'), where('packingNumber', '==', numPN));
+
+  const results = { str: [], num: [] };
+  let unsub1, unsub2;
+
+  function merge() {
+    const seen = new Set();
+    const merged = [...results.str, ...results.num].filter(b => {
+      if (seen.has(b._id)) return false;
+      seen.add(b._id);
+      return true;
+    });
+    merged.sort((a, b) => parseInt(a.boxNumber) - parseInt(b.boxNumber));
+    callback(merged);
+  }
+
+  unsub1 = onSnapshot(qStr, snap => {
+    results.str = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    merge();
   });
+  unsub2 = onSnapshot(qNum, snap => {
+    results.num = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+    merge();
+  });
+
+  return () => { unsub1(); unsub2(); };
 }
 
 /**

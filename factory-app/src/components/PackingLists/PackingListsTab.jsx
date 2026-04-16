@@ -276,9 +276,13 @@ function PackingDetail({ packingNumber, packingLists, onBack, onExport, onMarkSh
     }
   }
 
-  // Totals
+  // Totals — always compute from items to handle missing/stale totalItems field
   const totalBoxes = boxes.length;
-  const totalItems = boxes.reduce((s, b) => s + (b.totalItems || 0), 0);
+  const totalItems = boxes.reduce((s, b) => {
+    const fromItems = Object.values(b.items || {})
+      .reduce((is, item) => is + (item.totalQuantity || 0), 0);
+    return s + (b.totalItems > 0 ? b.totalItems : fromItems);
+  }, 0);
 
   // Size grand totals
   const sizeTotals = {};
