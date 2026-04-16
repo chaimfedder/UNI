@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../../firebase/config';
 import * as XLSX from 'xlsx-js-style';
 
 const SIZES = [51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63];
@@ -146,10 +147,20 @@ export default function ImportOrderExcel() {
     setSaving(true);
     try {
       const finalHeader = editMode ? editHeader : preview.header;
-      const ref = doc(db, 'orders', finalHeader.orderNumber.trim());
-      const existing = await getDoc(ref);
+      const dbRef = doc(db, 'orders', finalHeader.orderNumber.trim());
+      const existing = await getDoc(dbRef);
       if (existing.exists()) {
         if (!window.confirm(t('orders.duplicateConfirm'))) { setSaving(false); return; }
+      }
+
+      // Upload original Excel file to Firebase Storage
+      let originalFile = existing.exists() ? (existing.data().originalFile || null) : null;
+      const file = fileRef.current?.files?.[0];
+      if (file) {
+        const storageRef = ref(storage, `orders/${finalHeader.orderNumber.trim()}/${file.name}`);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        originalFile = { url, name: file.name };
       }
 
       const payload = {
@@ -165,8 +176,9 @@ export default function ImportOrderExcel() {
         status: 'ordered',
         createdAt: existing.exists() ? existing.data().createdAt : serverTimestamp(),
         updatedAt: serverTimestamp(),
+        ...(originalFile ? { originalFile } : {}),
       };
-      await setDoc(ref, payload);
+      await setDoc(dbRef, payload);
       showToast('success', t('orders.saveSuccess'));
       setPreview(null);
       setOrderNumber('');

@@ -66,6 +66,17 @@ function OrderDetail({ order, onClose, onDelete }) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {order.originalFile?.url && (
+              <a
+                href={order.originalFile.url}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-sm text-xs px-3 py-2 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 font-medium border border-green-200"
+                title={order.originalFile.name}
+              >
+                📎 הורד מקור
+              </a>
+            )}
             <button onClick={handleExport} className="btn-primary btn-sm">
               📥 ייצוא לאקסל
             </button>
@@ -307,6 +318,18 @@ export default function ViewOrdersTab() {
                         </td>
                         <td onClick={e => e.stopPropagation()}>
                           <div className="flex items-center gap-1">
+                            {order.originalFile?.url && (
+                              <a
+                                href={order.originalFile.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn-sm text-xs px-2 py-1 rounded bg-green-50 text-green-700 hover:bg-green-100 font-medium border border-green-200"
+                                onClick={e => e.stopPropagation()}
+                                title={order.originalFile.name}
+                              >
+                                📎 מקור
+                              </a>
+                            )}
                             <button
                               className="btn-primary btn-sm"
                               onClick={() => {
