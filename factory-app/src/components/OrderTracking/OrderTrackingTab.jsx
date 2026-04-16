@@ -471,14 +471,17 @@ function OrderDetail({ order, boxes, onBack }) {
         if (item.model) result._brands.add(String(item.model).toUpperCase());
         if (item.brim)  result._brims.add(String(item.brim));
 
-        const key = `${String(item.brim||'').trim()}__${String(item.height||'').trim()}__${String(item.finishBrim||'').trim()}`;
-        if (!perRowKey[key]) { perRowKey[key] = {}; SIZES.forEach(sz => perRowKey[key][sz] = 0); }
+        const key         = `${String(item.brim||'').trim()}__${String(item.height||'').trim()}__${String(item.finishBrim||'').trim()}`;
+        const fallbackKey = `${String(item.brim||'').trim()}__${String(item.finishBrim||'').trim()}`;
+        if (!perRowKey[key])         { perRowKey[key]         = {}; SIZES.forEach(sz => perRowKey[key][sz]         = 0); }
+        if (!perRowKey[fallbackKey]) { perRowKey[fallbackKey] = {}; SIZES.forEach(sz => perRowKey[fallbackKey][sz] = 0); }
 
         SIZES.forEach(sz => {
           const qty = parseInt(item.sizes?.[sz]) || 0;
-          result[sz]      += qty;
-          result._total   += qty;
-          perRowKey[key][sz] += qty;
+          result[sz]               += qty;
+          result._total            += qty;
+          perRowKey[key][sz]         += qty;
+          perRowKey[fallbackKey][sz] += qty;
         });
       });
     });
@@ -545,8 +548,9 @@ function OrderDetail({ order, boxes, onBack }) {
                 const brand = order.brand || order.model || '';
                 const orderedTotal = SIZES.reduce((s, sz) => s + (parseInt(row.sizes?.[sz]?.quantity) || 0), 0);
                 if (!orderedTotal) return null;
-                const matchKey = `${String(row.brim||'').trim()}__${String(row.crownHeight||'').trim()}__${String(row.brimFinish||'').trim()}`;
-                const rowShipped = shippedPerRowKey[matchKey] || {};
+                const matchKey         = `${String(row.brim||'').trim()}__${String(row.crownHeight||'').trim()}__${String(row.brimFinish||'').trim()}`;
+                const fallbackMatchKey = `${String(row.brim||'').trim()}__${String(row.brimFinish||'').trim()}`;
+                const rowShipped = shippedPerRowKey[matchKey] || shippedPerRowKey[fallbackMatchKey] || {};
                 const shippedTotal = SIZES.reduce((s, sz) => s + (rowShipped[sz] || 0), 0);
                 return (
                   <React.Fragment key={idx}>
