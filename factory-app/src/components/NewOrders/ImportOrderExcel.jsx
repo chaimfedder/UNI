@@ -7,6 +7,52 @@ import * as XLSX from 'xlsx-js-style';
 
 const SIZES = [51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63];
 
+// ── Row validation helpers ────────────────────────────────────
+// Rows containing any of these keywords are decorative/attribute rows
+// and must never be saved to the DB.
+const FORBIDDEN_ROW_KEYWORDS = [
+  'LEATHER', 'IMPRINTING', 'COLOR', 'DETAILS', 'WIDTH', 'LINING', 'ROOF', 'WALL',
+];
+
+/** Returns true if the row contains a forbidden decorative/attribute keyword. */
+function isForbiddenRow(row) {
+  return row.some(cell => {
+    const val = String(cell ?? '').trim().toUpperCase();
+    return FORBIDDEN_ROW_KEYWORDS.some(kw => val.includes(kw));
+  });
+}
+
+/**
+ * Returns true only when the row is a genuine hat-order product row:
+ *  - Contains no forbidden keywords
+ *  - Is not a summary / total row
+ *  - Has at least 2 meaningful product fields:
+ *      hatName, quality, crownHeight, brim, brimFinish, ribbonHeight,
+ *      OR at least one non-zero size quantity (51-63)
+ */
+function isRealOrderRow(row, sizeColMap) {
+  if (!row || row.length === 0) return false;
+  if (isForbiddenRow(row)) return false;
+
+  const col0 = String(row[0] ?? '').trim().toUpperCase();
+  if (col0.includes('TOTAL')) return false;
+
+  // Count filled product-descriptor fields (cols 0–5)
+  let count = 0;
+  for (let c = 0; c <= 5; c++) {
+    if (String(row[c] ?? '').trim() !== '') count++;
+  }
+
+  // Size quantities collectively count as one additional significant field
+  const hasQty = Object.values(sizeColMap).some(col => {
+    const qty = parseInt(row[col]);
+    return !isNaN(qty) && qty > 0;
+  });
+  if (hasQty) count++;
+
+  return count >= 2;
+}
+
 export default function ImportOrderExcel() {
   const { t } = useTranslation();
   const fileRef  = useRef();
@@ -106,9 +152,8 @@ export default function ImportOrderExcel() {
     const sizes = [];
     for (let i = sizesRow + 1; i < jsonData.length; i++) {
       const row = jsonData[i];
-      if (!row || !row[0]) continue;
-      const hatName = String(row[0]).trim();
-      if (!hatName || hatName.toLowerCase().includes('total') || hatName === '') continue;
+      if (!isRealOrderRow(row, sizeColMap)) continue;
+      const hatName = String(row[0] || '').trim();
 
       const sizeData = {};
       SIZES.forEach(sz => {
