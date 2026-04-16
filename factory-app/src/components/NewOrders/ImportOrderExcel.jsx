@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db, storage } from '../../firebase/config';
 import * as XLSX from 'xlsx-js-style';
 
@@ -64,6 +65,8 @@ export default function ImportOrderExcel() {
   const [editHeader, setEditHeader]   = useState({});
   const [toast, setToast]             = useState(null);
   const [saving, setSaving]           = useState(false);
+  const [waModal, setWaModal]         = useState(null);  // { message } | null
+  const [sendingWA, setSendingWA]     = useState(false);
 
   function showToast(type, msg) {
     setToast({ type, msg });
@@ -225,9 +228,11 @@ export default function ImportOrderExcel() {
       };
       await setDoc(dbRef, payload);
       showToast('success', t('orders.saveSuccess'));
+      const waMessage = buildWAMessage(finalHeader, preview.summary);
       setPreview(null);
       setOrderNumber('');
       if (fileRef.current) fileRef.current.value = '';
+      setWaModal({ message: waMessage });
     } catch (err) {
       console.error(err);
       showToast('error', t('orders.saveError') + ': ' + err.message);
@@ -236,11 +241,71 @@ export default function ImportOrderExcel() {
     }
   }
 
+  function buildWAMessage(header, summary) {
+    const lines = [
+      '🆕 *הזמנה חדשה התקבלה*',
+      '━━━━━━━━━━━━━━━━━━',
+      `📋 מספר הזמנה: ${header.orderNumber}`,
+      header.orderedBy  ? `👤 לקוח: ${header.orderedBy}`   : null,
+      header.model      ? `🎩 מודל: ${header.model}`        : null,
+      header.orderDate  ? `📅 תאריך: ${header.orderDate}`   : null,
+      `📦 סה״כ כובעים: ${summary.grandTotal}`,
+      '━━━━━━━━━━━━━━━━━━',
+    ];
+    return lines.filter(Boolean).join('\n');
+  }
+
+  async function handleSendWhatsApp() {
+    setSendingWA(true);
+    try {
+      const sendFn = httpsCallable(getFunctions(), 'sendWhatsApp');
+      await sendFn({ message: waModal.message });
+      showToast('success', '✅ ההודעה נשלחה לקבוצה');
+    } catch (err) {
+      showToast('error', 'שגיאה בשליחה: ' + err.message);
+    } finally {
+      setSendingWA(false);
+      setWaModal(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {toast && (
         <div className={`alert-${toast.type === 'success' ? 'success' : 'error'} fixed top-4 right-4 z-50 shadow-lg`}>
           {toast.msg}
+        </div>
+      )}
+
+      {/* WhatsApp confirmation modal */}
+      {waModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <h3 className="font-bold text-lg">📲 שליחת עדכון לוואטסאפ</h3>
+            <p className="text-sm text-gray-500">לשלוח הודעה לקבוצת <strong>בדיקה</strong>?</p>
+            <pre
+              dir="rtl"
+              className="bg-gray-50 border rounded-xl p-3 text-sm whitespace-pre-wrap leading-relaxed font-sans"
+            >
+              {waModal.message}
+            </pre>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setWaModal(null)}
+                className="btn-secondary"
+                disabled={sendingWA}
+              >
+                דלג
+              </button>
+              <button
+                onClick={handleSendWhatsApp}
+                disabled={sendingWA}
+                className="btn-success"
+              >
+                {sendingWA ? '⏳ שולח...' : '📤 שלח'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
