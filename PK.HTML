@@ -595,8 +595,13 @@ const OfflineManager = {
     _showIndicator(offline) {
         const el = document.getElementById('offlineIndicator');
         if (!el) return;
-        if (offline) { el.classList.remove('hidden'); el.classList.add('flex'); }
-        else         { el.classList.add('hidden');    el.classList.remove('flex'); }
+        if (offline) {
+            el.classList.remove('hidden'); el.classList.add('flex');
+            document.body.style.backgroundColor = '#dc2626';
+        } else {
+            el.classList.add('hidden'); el.classList.remove('flex');
+            document.body.style.backgroundColor = '';
+        }
     },
 
     // Call on every box save while offline — keeps backup fresh
