@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://factory-m.web.app", "https://factory-m.firebaseapp.com"],
+    "method": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length"]
+  }
+]
