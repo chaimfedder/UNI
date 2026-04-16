@@ -48,7 +48,7 @@ export default function CreateOrderForm() {
 
   const [header, setHeader] = useState({
     orderNumber: '', orderDate: today, orderedBy: '',
-    brand: '', model: '', bodyType: '', bodyOrder: '', invoiceNumber: '',
+    brand: '', bodyType: '', bodyOrder: '', invoiceNumber: '',
   });
   const [rows, setRows]     = useState([emptyRow()]);
   const [specs, setSpecs]   = useState(emptySpecs());
@@ -119,6 +119,7 @@ export default function CreateOrderForm() {
       const payload = {
         ...header,
         orderNumber: header.orderNumber.trim(),
+        model: header.brand, // keep model = brand for compatibility with import/export
         sizes: rows.map(r => ({ ...r })),
         specs,
         summary,
@@ -138,7 +139,7 @@ export default function CreateOrderForm() {
   }
 
   function clearForm() {
-    setHeader({ orderNumber: '', orderDate: today, orderedBy: '', brand: '', model: '', bodyType: '', bodyOrder: '', invoiceNumber: '' });
+    setHeader({ orderNumber: '', orderDate: today, orderedBy: '', brand: '', bodyType: '', bodyOrder: '', invoiceNumber: '' });
     setRows([emptyRow()]);
     setSpecs(emptySpecs());
   }
@@ -197,8 +198,7 @@ export default function CreateOrderForm() {
             {[
               { field: 'orderDate',     label: t('orders.orderDate'),     type: 'date' },
               { field: 'orderedBy',     label: t('orders.customer'),      type: 'text' },
-              { field: 'brand',         label: 'מותג (3 תווים)',          type: 'text', maxLength: 3, upper: true },
-              { field: 'model',         label: t('orders.model'),         type: 'text' },
+              { field: 'brand',         label: 'מותג / מודל',             type: 'text', maxLength: 5, upper: true },
               { field: 'orderNumber',   label: t('orders.orderNumber'),   type: 'text' },
               { field: 'bodyType',      label: t('orders.bodyType'),      type: 'text' },
               { field: 'bodyOrder',     label: t('orders.bodyOrder'),     type: 'text' },
