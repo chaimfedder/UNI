@@ -232,7 +232,11 @@ export default function ImportOrderExcel() {
       setPreview(null);
       setOrderNumber('');
       if (fileRef.current) fileRef.current.value = '';
-      setWaModal({ message: waMessage });
+      setWaModal({
+        message:  waMessage,
+        fileUrl:  originalFile?.url  || null,
+        fileName: originalFile?.name || 'order.xlsx',
+      });
     } catch (err) {
       console.error(err);
       showToast('error', t('orders.saveError') + ': ' + err.message);
@@ -259,7 +263,7 @@ export default function ImportOrderExcel() {
     setSendingWA(true);
     try {
       const sendFn = httpsCallable(getFunctions(), 'sendWhatsApp');
-      await sendFn({ message: waModal.message });
+      await sendFn({ message: waModal.message, fileUrl: waModal.fileUrl, fileName: waModal.fileName });
       showToast('success', '✅ ההודעה נשלחה לקבוצה');
     } catch (err) {
       showToast('error', 'שגיאה בשליחה: ' + err.message);
@@ -282,7 +286,11 @@ export default function ImportOrderExcel() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
             <h3 className="font-bold text-lg">📲 שליחת עדכון לוואטסאפ</h3>
-            <p className="text-sm text-gray-500">לשלוח הודעה לקבוצת <strong>בדיקה</strong>?</p>
+            <p className="text-sm text-gray-500">
+              לשלוח את הקובץ{' '}
+              <strong className="text-green-700">{waModal.fileName}</strong>{' '}
+              לקבוצת <strong>בדיקה</strong>?
+            </p>
             <pre
               dir="rtl"
               className="bg-gray-50 border rounded-xl p-3 text-sm whitespace-pre-wrap leading-relaxed font-sans"

@@ -23,17 +23,26 @@ exports.sendWhatsApp = functions.https.onCall(async (data) => {
     );
   }
 
-  const url = `https://api.green-api.com/waInstance${cfg.id}/sendMessage/${cfg.token}`;
+  const base = `https://api.green-api.com/waInstance${cfg.id}`;
 
-  const res = await fetch(url, {
+  // Send file + caption when a file URL is provided, otherwise plain text
+  const endpoint = data.fileUrl
+    ? `${base}/sendFileByUrl/${cfg.token}`
+    : `${base}/sendMessage/${cfg.token}`;
+
+  const body = data.fileUrl
+    ? { chatId: cfg.chatid, urlFile: data.fileUrl, fileName: data.fileName || 'order.xlsx', caption: data.message || '' }
+    : { chatId: cfg.chatid, message: data.message };
+
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chatId: cfg.chatid, message: data.message }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    const body = await res.text();
-    throw new functions.https.HttpsError('internal', `Green API error: ${body}`);
+    const err = await res.text();
+    throw new functions.https.HttpsError('internal', `Green API error: ${err}`);
   }
 
   return await res.json();
