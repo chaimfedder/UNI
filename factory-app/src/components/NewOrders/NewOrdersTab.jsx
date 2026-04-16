@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CreateOrderForm  from './CreateOrderForm';
 import ImportOrderExcel from './ImportOrderExcel';
+import ViewOrdersTab    from './ViewOrdersTab';
 
 export default function NewOrdersTab() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState(null); // null | 'create' | 'import'
+  const [tab, setTab] = useState(null); // null | 'create' | 'import' | 'view'
 
   // ── Selection screen ─────────────────────────────────────────
   if (!tab) {
@@ -13,7 +14,22 @@ export default function NewOrdersTab() {
       <div className="space-y-6">
         <h1 className="text-xl font-bold text-gray-800">{t('orders.title')}</h1>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
+          {/* View */}
+          <button
+            onClick={() => setTab('view')}
+            className="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 transition-all text-center"
+            style={{ borderColor: '#C9A84C', backgroundColor: '#FFFBEB' }}
+          >
+            <span className="text-4xl">📂</span>
+            <div>
+              <div className="font-bold text-lg" style={{ color: '#1A1A1A' }}>
+                צפייה בהזמנות
+              </div>
+              <div className="text-sm text-gray-500 mt-1">הצג וייצא הזמנות קיימות</div>
+            </div>
+          </button>
+
           {/* Create */}
           <button
             onClick={() => setTab('create')}
@@ -59,10 +75,13 @@ export default function NewOrdersTab() {
           ← חזור
         </button>
         <h1 className="text-xl font-bold text-gray-800">
-          {tab === 'create' ? t('orders.createTab') : t('orders.importTab')}
+          {tab === 'create' ? t('orders.createTab')
+           : tab === 'import' ? t('orders.importTab')
+           : 'צפייה בהזמנות'}
         </h1>
       </div>
 
+      {tab === 'view'   && <ViewOrdersTab />}
       {tab === 'create' && <CreateOrderForm />}
       {tab === 'import' && <ImportOrderExcel />}
     </div>
