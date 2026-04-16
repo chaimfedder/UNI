@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db, storage } from '../../firebase/config';
 import * as XLSX from 'xlsx-js-style';
 
@@ -262,8 +261,19 @@ export default function ImportOrderExcel() {
   async function handleSendWhatsApp() {
     setSendingWA(true);
     try {
-      const sendFn = httpsCallable(getFunctions(), 'sendWhatsApp');
-      await sendFn({ message: waModal.message, fileUrl: waModal.fileUrl, fileName: waModal.fileName });
+      const res = await fetch(
+        'https://us-central1-factory-m.cloudfunctions.net/sendWhatsApp',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message:  waModal.message,
+            fileUrl:  waModal.fileUrl,
+            fileName: waModal.fileName,
+          }),
+        }
+      );
+      if (!res.ok) throw new Error(await res.text());
       showToast('success', '✅ ההודעה נשלחה לקבוצה');
     } catch (err) {
       showToast('error', 'שגיאה בשליחה: ' + err.message);

@@ -1,38 +1,50 @@
 const functions = require('firebase-functions');
 const admin     = require('firebase-admin');
 const fetch     = require('node-fetch');
+const cors      = require('cors')({ origin: true });
 
 admin.initializeApp();
 
-exports.sendWhatsApp = functions.https.onCall(async (data) => {
-  const id     = process.env.GREENAPI_ID;
-  const token  = process.env.GREENAPI_TOKEN;
-  const chatid = process.env.GREENAPI_CHATID;
+exports.sendWhatsApp = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    try {
+      if (req.method !== 'POST') { res.status(405).send('Method Not Allowed'); return; }
 
-  if (!id || !token || !chatid) {
-    throw new functions.https.HttpsError('failed-precondition', 'Green API env vars missing in functions/.env');
-  }
+      const id     = process.env.GREENAPI_ID;
+      const token  = process.env.GREENAPI_TOKEN;
+      const chatid = process.env.GREENAPI_CHATID;
 
-  const base = `https://api.green-api.com/waInstance${id}`;
+      if (!id || !token || !chatid) {
+        res.status(500).json({ error: 'Green API env vars missing in functions/.env' });
+        return;
+      }
 
-  const endpoint = data.fileUrl
-    ? `${base}/sendFileByUrl/${token}`
-    : `${base}/sendMessage/${token}`;
+      const { message, fileUrl, fileName } = req.body;
+      const base = `https://api.green-api.com/waInstance${id}`;
 
-  const body = data.fileUrl
-    ? { chatId: chatid, urlFile: data.fileUrl, fileName: data.fileName || 'order.xlsx', caption: data.message || '' }
-    : { chatId: chatid, message: data.message };
+      const endpoint = fileUrl
+        ? `${base}/sendFileByUrl/${token}`
+        : `${base}/sendMessage/${token}`;
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+      const body = fileUrl
+        ? { chatId: chatid, urlFile: fileUrl, fileName: fileName || 'order.xlsx', caption: message || '' }
+        : { chatId: chatid, message };
+
+      const apiRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!apiRes.ok) {
+        const err = await apiRes.text();
+        res.status(500).json({ error: `Green API error: ${err}` });
+        return;
+      }
+
+      res.json(await apiRes.json());
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
   });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new functions.https.HttpsError('internal', `Green API error: ${err}`);
-  }
-
-  return await res.json();
 });
