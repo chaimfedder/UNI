@@ -104,9 +104,9 @@ function OrderDetail({ order, onClose, onDelete }) {
                 <tr>
                   <th className="text-start">שם כובע</th>
                   <th>איכות</th>
-                  <th>גובה כיפה</th>
-                  <th>שולים</th>
-                  <th>גמר שולים</th>
+                  <th>גובה כתר</th>
+                  <th>שוליים</th>
+                  <th>גימור שוליים</th>
                   <th>גובה סרט</th>
                   {SIZES.map(s => <th key={s}>{s}</th>)}
                   <th>סה"כ</th>
