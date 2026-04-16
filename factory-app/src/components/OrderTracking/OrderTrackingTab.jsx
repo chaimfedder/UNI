@@ -94,10 +94,12 @@ export default function OrderTrackingTab() {
     // ── Count shipped ─────────────────────────────────────────────────────
     boxes.forEach(box => {
       Object.values(box.items || {}).forEach(item => {
+        const itemOrderNum = String(item.orderNumber || '').trim();
+        if (orderNumF && itemOrderNum !== orderNumF) return;
         if (brandF && String(item.model || '').toUpperCase().trim() !== brandF) return;
         if (brimF  && !String(item.brim  || '').includes(brimF)) return;
 
-        const onum = String(item.orderNumber || '').trim();
+        const onum = itemOrderNum;
         if (!shippedByOrder[onum]) {
           shippedByOrder[onum] = { total: 0, bySz: {} };
           SIZES.forEach(sz => shippedByOrder[onum].bySz[sz] = 0);
@@ -123,7 +125,14 @@ export default function OrderTrackingTab() {
     const totalShipped = displaySizes.reduce((s, sz) => s + (shippedBySz[sz] || 0), 0);
 
     // ── Per-order list ────────────────────────────────────────────────────
-    const allNums = new Set([...Object.keys(orderedByOrder), ...Object.keys(shippedByOrder)]);
+    // Base set: orders that passed the ordered-side filters.
+    // Only add shipped-only rows when no order-level filter is active
+    // (orderNumF or brandF already restrict which orders appear).
+    const orderedNums = new Set(Object.keys(orderedByOrder));
+    const allNums = (orderNumF || brandF)
+      ? orderedNums  // strict: only orders that matched both order-level filters
+      : new Set([...orderedNums, ...Object.keys(shippedByOrder)]);
+
     const perOrderList = [...allNums]
       .map(onum => {
         const ord = orderedByOrder[onum] || { total: 0, bySz: {}, brand: '', orderedBy: '', orderDate: '' };
