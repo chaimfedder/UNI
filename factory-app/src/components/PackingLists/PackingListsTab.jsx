@@ -4,6 +4,8 @@ import {
   subscribeToPackingLists,
   subscribeToBoxesByPacking,
   updatePackingListStatus,
+  deleteBoxFromFirebase,
+  deletePackingListFromFirebase,
 } from '../../firebase/packing';
 import { exportPackingToExcel } from '../../firebase/packingExport';
 import { importPackingFromExcel } from '../../firebase/packingImport';
@@ -81,6 +83,16 @@ export default function PackingListsTab() {
     const newStatus = currentStatus === 'shipped' ? 'open' : 'shipped';
     const date = newStatus === 'shipped' ? new Date().toISOString().split('T')[0] : null;
     await updatePackingListStatus(packingNumber, newStatus, date);
+  }
+
+  // ── Delete packing list handler ───────────────────────────────────────────
+  async function handleDeletePackingList(packingNumber) {
+    if (!window.confirm(`למחוק את רשימת האריזה ${packingNumber} וכל הקרטונים שלה?`)) return;
+    try {
+      await deletePackingListFromFirebase(packingNumber);
+    } catch (err) {
+      alert(`שגיאה במחיקה: ${err.message}`);
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -193,6 +205,7 @@ export default function PackingListsTab() {
                   pl={pl}
                   onView={() => setSelectedPN(pl.packingNumber)}
                   onMarkShipped={() => handleMarkShipped(pl.packingNumber, pl.status)}
+                  onDelete={() => handleDeletePackingList(pl.packingNumber)}
                 />
               ))}
             </tbody>
@@ -206,7 +219,7 @@ export default function PackingListsTab() {
 // ─────────────────────────────────────────────────────────────────────────────
 // PackingListRow
 // ─────────────────────────────────────────────────────────────────────────────
-function PackingListRow({ pl, onView, onMarkShipped }) {
+function PackingListRow({ pl, onView, onMarkShipped, onDelete }) {
   const { t } = useTranslation();
   const shipped = pl.status === 'shipped';
 
@@ -243,6 +256,12 @@ function PackingListRow({ pl, onView, onMarkShipped }) {
           >
             {shipped ? t('packingLists.open') : t('packingLists.markShipped')}
           </button>
+          <button
+            onClick={onDelete}
+            className="inline-flex items-center px-2 py-2 text-xs rounded-lg font-medium bg-red-50 text-red-600 hover:bg-red-100 cursor-pointer"
+          >
+            🗑️ מחק
+          </button>
         </div>
       </Td>
     </tr>
@@ -256,6 +275,15 @@ function PackingDetail({ packingNumber, packingLists, onBack, onExport, onMarkSh
   const { t }      = useTranslation();
   const [boxes, setBoxes] = useState([]);
   const [busy, setBusy]   = useState(false);
+
+  async function handleDeleteBox(boxNumber) {
+    if (!window.confirm(`למחוק קרטון ${boxNumber}?`)) return;
+    try {
+      await deleteBoxFromFirebase(packingNumber, boxNumber);
+    } catch (err) {
+      alert(`שגיאה במחיקה: ${err.message}`);
+    }
+  }
 
   const pl = packingLists.find(x => String(x.packingNumber) === String(packingNumber));
   const shipped = pl?.status === 'shipped';
@@ -369,7 +397,7 @@ function PackingDetail({ packingNumber, packingLists, onBack, onExport, onMarkSh
       ) : (
         <div className="space-y-3">
           {boxes.map(box => (
-            <BoxCard key={box._id} box={box} />
+            <BoxCard key={box._id} box={box} onDelete={() => handleDeleteBox(box.boxNumber)} />
           ))}
         </div>
       )}
@@ -380,7 +408,7 @@ function PackingDetail({ packingNumber, packingLists, onBack, onExport, onMarkSh
 // ─────────────────────────────────────────────────────────────────────────────
 // BoxCard — shows one box with its items
 // ─────────────────────────────────────────────────────────────────────────────
-function BoxCard({ box }) {
+function BoxCard({ box, onDelete }) {
   const { t } = useTranslation();
   const items = Object.values(box.items || {});
 
@@ -390,9 +418,15 @@ function BoxCard({ box }) {
       <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200 text-sm font-semibold">
         <span>{t('packingLists.boxNumber')} {box.boxNumber}</span>
         <span className="badge badge-gray">{box.boxSize}</span>
-        <span className="ms-auto text-gray-500">
+        <span className="text-gray-500">
           {t('packingLists.totalItems')}: {box.totalItems ?? items.reduce((s,i) => s + (i.totalQuantity||0), 0)}
         </span>
+        <button
+          onClick={onDelete}
+          className="ms-auto text-xs px-2 py-1 rounded bg-red-50 text-red-500 hover:bg-red-100 font-medium"
+        >
+          🗑️ מחק קרטון
+        </button>
       </div>
 
       {/* Items table */}

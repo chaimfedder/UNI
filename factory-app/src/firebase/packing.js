@@ -30,6 +30,7 @@ import {
   doc,
   setDoc,
   deleteDoc,
+  getDocs,
   collection,
   onSnapshot,
   writeBatch,
@@ -307,4 +308,40 @@ async function _upsertPackingListMeta(packingNumber) {
     { createdAt: serverTimestamp() },
     { merge: true }
   );
+}
+
+// ── Delete entire packing list ─────────────────────────────────────────────────
+
+/**
+ * Delete a packing list and ALL its boxes from Firestore.
+ * Queries both string and numeric packingNumber (handles PK type mismatch).
+ *
+ * @param {string|number} packingNumber
+ */
+export async function deletePackingListFromFirebase(packingNumber) {
+  const strPN = String(packingNumber);
+  const numPN = Number(packingNumber);
+
+  const qStr = query(collection(db, 'boxes'), where('packingNumber', '==', strPN));
+  const qNum = query(collection(db, 'boxes'), where('packingNumber', '==', numPN));
+
+  const [snapStr, snapNum] = await Promise.all([getDocs(qStr), getDocs(qNum)]);
+
+  const seen = new Set();
+  const boxRefs = [];
+  [...snapStr.docs, ...snapNum.docs].forEach(d => {
+    if (!seen.has(d.id)) {
+      seen.add(d.id);
+      boxRefs.push(d.ref);
+    }
+  });
+
+  const CHUNK = 490;
+  for (let i = 0; i < boxRefs.length; i += CHUNK) {
+    const batch = writeBatch(db);
+    boxRefs.slice(i, i + CHUNK).forEach(ref => batch.delete(ref));
+    await batch.commit();
+  }
+
+  await deleteDoc(doc(db, 'packingLists', strPN));
 }

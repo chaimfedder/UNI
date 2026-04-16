@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot, query, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { exportOrderToExcel } from './exportOrderToExcel';
 
@@ -20,7 +20,7 @@ function statusBadge(status) {
 
 // ── Order detail modal ────────────────────────────────────────────────────────
 
-function OrderDetail({ order, onClose }) {
+function OrderDetail({ order, onClose, onDelete }) {
   const h = order.header || order; // fallback for older docs without header field
   const sizes = order.sizes || [];
   const specs = order.specs || {};
@@ -68,6 +68,12 @@ function OrderDetail({ order, onClose }) {
           <div className="flex items-center gap-2">
             <button onClick={handleExport} className="btn-primary btn-sm">
               📥 ייצוא לאקסל
+            </button>
+            <button
+              onClick={() => onDelete(order._id, orderNumber)}
+              className="btn-sm text-xs px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium border border-red-200"
+            >
+              🗑️ מחק
             </button>
             <button onClick={onClose} className="btn-secondary btn-sm">✕ סגור</button>
           </div>
@@ -186,6 +192,16 @@ export default function ViewOrdersTab() {
   const [search,  setSearch]  = useState('');
   const [selected, setSelected] = useState(null);
 
+  async function deleteOrder(orderId, orderNumber) {
+    if (!window.confirm(`למחוק הזמנה ${orderNumber || orderId}?`)) return;
+    try {
+      await deleteDoc(doc(db, 'orders', orderId));
+      if (selected?._id === orderId) setSelected(null);
+    } catch (err) {
+      alert(`שגיאה במחיקה: ${err.message}`);
+    }
+  }
+
   useEffect(() => {
     const q = query(collection(db, 'orders'));
     const unsub = onSnapshot(q, snap => {
@@ -225,7 +241,11 @@ export default function ViewOrdersTab() {
   return (
     <>
       {selected && (
-        <OrderDetail order={selected} onClose={() => setSelected(null)} />
+        <OrderDetail
+          order={selected}
+          onClose={() => setSelected(null)}
+          onDelete={deleteOrder}
+        />
       )}
 
       <div className="space-y-3">
@@ -286,31 +306,39 @@ export default function ViewOrdersTab() {
                           {statusBadge(order.status)}
                         </td>
                         <td onClick={e => e.stopPropagation()}>
-                          <button
-                            className="btn-primary btn-sm"
-                            onClick={() => {
-                              const payload = {
-                                header: {
-                                  orderNumber:   order.orderNumber   || order._id || '',
-                                  model:         order.model         || '',
-                                  orderedBy:     order.orderedBy     || '',
-                                  orderDate:     order.orderDate     || '',
-                                  brand:         order.brand         || '',
-                                  bodyType:      order.bodyType      || '',
-                                  bodyOrder:     order.bodyOrder     || '',
-                                  invoiceNumber: order.invoiceNumber || '',
-                                },
-                                sizes:   order.sizes   || [],
-                                specs:   order.specs   || {},
-                                summary: order.summary?.grandTotal != null
-                                  ? order.summary
-                                  : buildSummary(order.sizes || []),
-                              };
-                              exportOrderToExcel(payload);
-                            }}
-                          >
-                            📥 אקסל
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              className="btn-primary btn-sm"
+                              onClick={() => {
+                                const payload = {
+                                  header: {
+                                    orderNumber:   order.orderNumber   || order._id || '',
+                                    model:         order.model         || '',
+                                    orderedBy:     order.orderedBy     || '',
+                                    orderDate:     order.orderDate     || '',
+                                    brand:         order.brand         || '',
+                                    bodyType:      order.bodyType      || '',
+                                    bodyOrder:     order.bodyOrder     || '',
+                                    invoiceNumber: order.invoiceNumber || '',
+                                  },
+                                  sizes:   order.sizes   || [],
+                                  specs:   order.specs   || {},
+                                  summary: order.summary?.grandTotal != null
+                                    ? order.summary
+                                    : buildSummary(order.sizes || []),
+                                };
+                                exportOrderToExcel(payload);
+                              }}
+                            >
+                              📥 אקסל
+                            </button>
+                            <button
+                              className="text-xs px-2 py-1 rounded bg-red-50 text-red-500 hover:bg-red-100 font-medium"
+                              onClick={() => deleteOrder(order._id, order.orderNumber || order._id)}
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
