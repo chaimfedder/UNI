@@ -342,7 +342,7 @@ export default function OrderTrackingTab() {
           >
             <span>סיכום סינון:</span>
             {filters.brand       && <span className="font-mono bg-white px-2 py-0.5 rounded border border-yellow-300">מותג: {filters.brand}</span>}
-            {filters.brim        && <span className="bg-white px-2 py-0.5 rounded border border-yellow-300">שולים: {filters.brim}</span>}
+            {filters.brim        && <span className="bg-white px-2 py-0.5 rounded border border-yellow-300">שוליים: {filters.brim}</span>}
             {filters.size        && <span className="bg-white px-2 py-0.5 rounded border border-yellow-300">מידה: {filters.size}</span>}
             {filters.orderNumber && <span className="bg-white px-2 py-0.5 rounded border border-yellow-300">הזמנה: {filters.orderNumber}</span>}
             <span className="ms-auto flex items-center gap-4">
@@ -538,7 +538,7 @@ function OrderDetail({ order, boxes, onBack }) {
                 <th className="px-2 py-1 text-start"></th>
                 <th className="px-2 py-1 text-start">מודל</th>
                 <th className="px-2 py-1 text-start">שם כובע</th>
-                <th className="px-2 py-1">שולים</th>
+                <th className="px-2 py-1">שוליים</th>
                 {SIZES.map(sz => <th key={sz} className="px-1 py-1">{sz}</th>)}
                 <th className="px-2 py-1 font-bold">סה"כ</th>
               </tr>
