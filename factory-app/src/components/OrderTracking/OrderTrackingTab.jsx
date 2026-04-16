@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase/config';
@@ -498,19 +498,23 @@ function OrderDetail({ order, boxes, onBack }) {
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={onBack} className="btn-secondary btn-sm">← חזור</button>
         <h1 className="text-xl font-bold text-gray-800">
           הזמנה {order.orderNumber}
-          {order.brand && (
-            <span className="ms-2 font-mono text-base bg-gray-100 px-2 py-0.5 rounded text-gray-700">{order.brand}</span>
+          {(order.brand || order.model) && (
+            <span className="ms-2 font-mono text-base bg-gray-100 px-2 py-0.5 rounded text-gray-700">
+              {order.brand || order.model}
+            </span>
           )}
         </h1>
         <ProgressBar pct={pct} wide />
       </div>
 
+      {/* Info cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <InfoCard label="מותג"    value={order.brand}      highlight="gold" />
+        <InfoCard label="מותג"    value={order.brand || order.model} highlight="gold" />
         <InfoCard label="לקוח"    value={order.orderedBy} />
         <InfoCard label="תאריך"   value={order.orderDate} />
         <InfoCard label="סטטוס"
@@ -519,95 +523,37 @@ function OrderDetail({ order, boxes, onBack }) {
         />
       </div>
 
-      {/* Per-size ordered vs shipped */}
-      {activeSizes.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-xs sm:text-sm text-center">
-            <thead>
-              <tr className="bg-gray-50 border-b">
-                <th className="px-3 py-2 text-start font-semibold text-gray-600">פירוט לפי מידה</th>
-                {activeSizes.map(sz => <th key={sz} className="px-2 py-2 font-semibold text-gray-600">{sz}</th>)}
-                <th className="px-3 py-2 font-bold text-gray-800 border-s">סה"כ</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="px-3 py-2 text-start font-medium text-gray-700">הוזמן</td>
-                {activeSizes.map(sz => <td key={sz} className="px-2 py-2">{ordered[sz] || ''}</td>)}
-                <td className="px-3 py-2 font-bold border-s">{grandOrdered}</td>
-              </tr>
-              <tr className="border-b bg-green-50">
-                <td className="px-3 py-2 text-start font-medium text-green-700">נארז</td>
-                {activeSizes.map(sz => (
-                  <td key={sz} className="px-2 py-2 text-green-700 font-semibold">{shipped[sz] || ''}</td>
-                ))}
-                <td className="px-3 py-2 font-bold text-green-800 border-s">{grandShipped}</td>
-              </tr>
-              <tr className="bg-orange-50">
-                <td className="px-3 py-2 text-start font-medium text-orange-700">נותר</td>
-                {activeSizes.map(sz => {
-                  const rem = Math.max(0, (ordered[sz] || 0) - (shipped[sz] || 0));
-                  return (
-                    <td key={sz} className={`px-2 py-2 font-semibold ${rem > 0 ? 'text-orange-600' : 'text-gray-300'}`}>
-                      {rem > 0 ? rem : ''}
-                    </td>
-                  );
-                })}
-                <td className="px-3 py-2 font-bold text-orange-700 border-s">{grandRemain}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Packing lists that include this order */}
-      {shipped._packings?.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <h3 className="font-semibold text-gray-700 mb-2 text-sm">אריזות שמכילות הזמנה זו</h3>
-          <div className="flex flex-wrap gap-2">
-            {shipped._packings.map(pn => (
-              <span key={pn} className="badge badge-ordered">אריזה #{pn}</span>
-            ))}
-          </div>
-          {shipped._brands?.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {shipped._brands.map(b => (
-                <span key={b} className="font-mono badge badge-gray">{b}</span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Order rows — ordered vs shipped per row */}
+      {/* ── Part 1: unified ordered / shipped table ── */}
       {order.sizes?.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <div className="px-4 py-2 bg-gray-50 border-b text-sm font-semibold text-gray-700">
-            פירוט שורות הזמנה
+            פירוט הזמנה
           </div>
           <table className="w-full text-xs text-center">
             <thead>
               <tr className="border-b bg-gray-50">
-                <th className="px-2 py-1 text-start w-6"></th>
+                <th className="px-2 py-1 text-start"></th>
+                <th className="px-2 py-1 text-start">מודל</th>
                 <th className="px-2 py-1 text-start">שם כובע</th>
-                <th className="px-2 py-1">שוליים</th>
+                <th className="px-2 py-1">שולים</th>
                 {SIZES.map(sz => <th key={sz} className="px-1 py-1">{sz}</th>)}
                 <th className="px-2 py-1 font-bold">סה"כ</th>
               </tr>
             </thead>
             <tbody>
               {order.sizes.map((row, idx) => {
+                const brand = order.brand || order.model || '';
                 const orderedTotal = SIZES.reduce((s, sz) => s + (parseInt(row.sizes?.[sz]?.quantity) || 0), 0);
                 if (!orderedTotal) return null;
-                // Match shipped by brim + crownHeight + brimFinish
                 const matchKey = `${String(row.brim||'').trim()}__${String(row.crownHeight||'').trim()}__${String(row.brimFinish||'').trim()}`;
                 const rowShipped = shippedPerRowKey[matchKey] || {};
                 const shippedTotal = SIZES.reduce((s, sz) => s + (rowShipped[sz] || 0), 0);
                 return (
-                  <>
+                  <React.Fragment key={idx}>
                     {/* Ordered row */}
-                    <tr key={`o-${idx}`} className="border-b border-gray-100">
+                    <tr className="border-b border-gray-100">
                       <td className="px-2 py-1 text-xs font-semibold text-gray-500 whitespace-nowrap">הוזמן</td>
+                      <td className="px-2 py-1 text-start font-mono font-bold text-xs" style={{ color: '#A07830' }}>{brand}</td>
                       <td className="px-2 py-1 text-start font-medium">{row.hatName}</td>
                       <td className="px-2 py-1">{row.brim}</td>
                       {SIZES.map(sz => (
@@ -618,10 +564,11 @@ function OrderDetail({ order, boxes, onBack }) {
                       <td className="px-2 py-1 font-bold">{orderedTotal}</td>
                     </tr>
                     {/* Shipped row */}
-                    <tr key={`s-${idx}`} className="border-b-2 border-gray-200 bg-green-50">
+                    <tr className="border-b-2 border-gray-200 bg-green-50">
                       <td className="px-2 py-1 text-xs font-semibold text-green-700 whitespace-nowrap">נשלח</td>
+                      <td className="px-2 py-1 text-start font-mono text-xs text-green-700">{brand}</td>
                       <td className="px-2 py-1 text-start text-gray-400 text-xs">{row.hatName}</td>
-                      <td className="px-2 py-1 text-gray-400">{row.brim}</td>
+                      <td className="px-2 py-1 text-gray-500">{row.brim}</td>
                       {SIZES.map(sz => (
                         <td key={sz} className="px-1 py-1 text-green-700 font-semibold">
                           {rowShipped[sz] || ''}
@@ -629,13 +576,27 @@ function OrderDetail({ order, boxes, onBack }) {
                       ))}
                       <td className="px-2 py-1 font-bold text-green-800">{shippedTotal || ''}</td>
                     </tr>
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* ── Part 2: packing info ── */}
+      {shipped._packings?.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <h3 className="font-semibold text-gray-700 mb-2 text-sm">אריזות שמכילות הזמנה זו</h3>
+          <div className="flex flex-wrap gap-2">
+            {shipped._packings.map(pn => (
+              <span key={pn} className="badge badge-ordered">אריזה #{pn}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
     </div>
   );
 }
