@@ -14,6 +14,7 @@ export default function OrderTrackingTab() {
   const [boxes,  setBoxes]  = useState([]);
   const [selected, setSelected] = useState(null);
   const [filters, setFilters] = useState({ orderNumber: '', brand: '', size: '', brim: '' });
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
 
   useEffect(() => {
     const u1 = onSnapshot(collection(db, 'orders'), s => setOrders(s.docs.map(d => ({ _id: d.id, ...d.data() }))));
@@ -30,9 +31,13 @@ export default function OrderTrackingTab() {
     const orderNumbers = [...new Set(
       orders.map(o => String(o.orderNumber || '').trim()).filter(Boolean)
     )].sort();
-    const brands = [...new Set(
-      orders.map(o => String(o.brand || '').toUpperCase().trim()).filter(Boolean)
-    )].sort();
+    // brand and model are the same concept — collect both, normalize to uppercase
+    const brandSet = new Set();
+    orders.forEach(o => {
+      const b = String(o.brand || o.model || '').trim().toUpperCase();
+      if (b) brandSet.add(b);
+    });
+    const brands = [...brandSet].sort();
     const brimSet = new Set();
     orders.forEach(o => (o.sizes || []).forEach(row => {
       if (row.brim) brimSet.add(String(row.brim).trim());
@@ -60,13 +65,14 @@ export default function OrderTrackingTab() {
     // ── Count ordered ─────────────────────────────────────────────────────
     orders.forEach(order => {
       if (orderNumF && String(order.orderNumber || '').trim() !== orderNumF) return;
-      if (brandF && !String(order.brand || '').toUpperCase().includes(brandF)) return;
+      const orderBrand = String(order.brand || order.model || '').toUpperCase().trim();
+      if (brandF && orderBrand !== brandF) return;
 
       const onum = String(order.orderNumber || '');
       if (!orderedByOrder[onum]) {
         orderedByOrder[onum] = {
           total: 0, bySz: {},
-          brand: order.brand || '',
+          brand: order.brand || order.model || '',
           orderedBy: order.orderedBy || '',
           orderDate: order.orderDate || '',
         };
@@ -88,7 +94,7 @@ export default function OrderTrackingTab() {
     // ── Count shipped ─────────────────────────────────────────────────────
     boxes.forEach(box => {
       Object.values(box.items || {}).forEach(item => {
-        if (brandF && !String(item.model || '').toUpperCase().includes(brandF)) return;
+        if (brandF && String(item.model || '').toUpperCase().trim() !== brandF) return;
         if (brimF  && !String(item.brim  || '').includes(brimF)) return;
 
         const onum = String(item.orderNumber || '').trim();
@@ -316,52 +322,57 @@ export default function OrderTrackingTab() {
         </div>
       </div>
 
-      {/* ── Per-size breakdown ─────────────────────────────────────────────────── */}
-      {displaySizes.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-          <div className="px-4 py-2 bg-gray-50 border-b text-sm font-semibold text-gray-700">
-            פירוט לפי מידה
-            {hasFilter && <span className="text-xs ms-2 font-normal" style={{ color: '#C9A84C' }}>מסונן</span>}
-          </div>
-          <table className="w-full text-xs sm:text-sm text-center">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="px-3 py-2 text-start font-semibold text-gray-600 whitespace-nowrap"> </th>
-                {displaySizes.map(sz => (
-                  <th key={sz} className="px-2 py-2 font-semibold text-gray-700">{sz}</th>
-                ))}
-                <th className="px-3 py-2 font-bold text-gray-800 border-s">סה"כ</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="px-3 py-2 text-start font-medium text-gray-700 whitespace-nowrap">הוזמן</td>
-                {displaySizes.map(sz => (
-                  <td key={sz} className="px-2 py-2">{orderedBySz[sz] || ''}</td>
-                ))}
-                <td className="px-3 py-2 font-bold border-s">{totalOrdered}</td>
-              </tr>
-              <tr className="border-b bg-green-50">
-                <td className="px-3 py-2 text-start font-medium text-green-700 whitespace-nowrap">נארז</td>
-                {displaySizes.map(sz => (
-                  <td key={sz} className="px-2 py-2 text-green-700 font-semibold">{shippedBySz[sz] || ''}</td>
-                ))}
-                <td className="px-3 py-2 font-bold text-green-800 border-s">{totalShipped}</td>
-              </tr>
-              <tr className="bg-orange-50">
-                <td className="px-3 py-2 text-start font-medium text-orange-700 whitespace-nowrap">נותר</td>
-                {displaySizes.map(sz => {
-                  const rem = Math.max(0, (orderedBySz[sz] || 0) - (shippedBySz[sz] || 0));
-                  return (
-                    <td key={sz} className={`px-2 py-2 font-semibold ${rem > 0 ? 'text-orange-600' : 'text-gray-300'}`}>
-                      {rem > 0 ? rem : ''}
-                    </td>
-                  );
-                })}
-                <td className="px-3 py-2 font-bold text-orange-700 border-s">{totalRemain}</td>
-              </tr>
-            </tbody>
-          </table>
+      {/* ── Filter summary card (shown only when filters active) ─────────────── */}
+      {hasFilter && perOrderList.length > 0 && (
+        <div className="rounded-xl border overflow-hidden" style={{ borderColor: '#E8C84A' }}>
+          {/* Header row — click to expand/collapse */}
+          <button
+            className="w-full flex flex-wrap items-center gap-3 px-4 py-3 text-sm font-semibold text-start"
+            style={{ backgroundColor: '#FBF5DC', color: '#7A5C20' }}
+            onClick={() => setSummaryExpanded(e => !e)}
+          >
+            <span>סיכום סינון:</span>
+            {filters.brand       && <span className="font-mono bg-white px-2 py-0.5 rounded border border-yellow-300">מותג: {filters.brand}</span>}
+            {filters.brim        && <span className="bg-white px-2 py-0.5 rounded border border-yellow-300">שולים: {filters.brim}</span>}
+            {filters.size        && <span className="bg-white px-2 py-0.5 rounded border border-yellow-300">מידה: {filters.size}</span>}
+            {filters.orderNumber && <span className="bg-white px-2 py-0.5 rounded border border-yellow-300">הזמנה: {filters.orderNumber}</span>}
+            <span className="ms-auto flex items-center gap-4">
+              <span>הוזמן: <strong>{totalOrdered}</strong></span>
+              <span className="text-green-700">נשלח: <strong>{totalShipped}</strong></span>
+              <span className={totalRemain > 0 ? 'text-orange-600' : 'text-green-700'}>נותר: <strong>{totalRemain}</strong></span>
+              <span className="text-gray-400 text-xs">{summaryExpanded ? '▲' : '▼'} פירוט לפי הזמנה</span>
+            </span>
+          </button>
+          {/* Expanded: per-order breakdown */}
+          {summaryExpanded && (
+            <div className="overflow-x-auto border-t" style={{ borderColor: '#E8C84A' }}>
+              <table className="w-full text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b text-xs" style={{ backgroundColor: '#FBF5DC' }}>
+                    <Th>מספר הזמנה</Th>
+                    <Th>מותג</Th>
+                    <Th center>הוזמן</Th>
+                    <Th center>נשלח</Th>
+                    <Th center>נותר</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {perOrderList.map(row => {
+                    const rem = Math.max(0, row.ordered - row.shipped);
+                    return (
+                      <tr key={row.orderNumber} className="border-b border-yellow-100 hover:bg-yellow-50">
+                        <Td><span className="font-bold" style={{ color: '#C9A84C' }}>{row.orderNumber}</span></Td>
+                        <Td><span className="font-mono text-xs font-semibold">{row.brand || '—'}</span></Td>
+                        <Td center>{row.ordered}</Td>
+                        <Td center><span className={row.shipped > 0 ? 'text-green-700 font-semibold' : 'text-gray-300'}>{row.shipped || '—'}</span></Td>
+                        <Td center><span className={rem > 0 ? 'text-orange-600 font-semibold' : 'text-green-700'}>{rem > 0 ? rem : '✓'}</span></Td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -438,9 +449,11 @@ export default function OrderTrackingTab() {
 // OrderDetail — full detail for a single order
 // ─────────────────────────────────────────────────────────────────────────────
 function OrderDetail({ order, boxes, onBack }) {
-  const shipped = useMemo(() => {
+  const { shipped, shippedPerRowKey } = useMemo(() => {
     const result = { _total: 0, _packings: new Set(), _brands: new Set(), _brims: new Set() };
     SIZES.forEach(sz => { result[sz] = 0; });
+    // per-row map: brim__crownHeight__brimFinish → { sz: qty }
+    const perRowKey = {};
 
     boxes.forEach(box => {
       Object.values(box.items || {}).forEach(item => {
@@ -448,10 +461,15 @@ function OrderDetail({ order, boxes, onBack }) {
         result._packings.add(String(box.packingNumber));
         if (item.model) result._brands.add(String(item.model).toUpperCase());
         if (item.brim)  result._brims.add(String(item.brim));
+
+        const key = `${String(item.brim||'').trim()}__${String(item.height||'').trim()}__${String(item.finishBrim||'').trim()}`;
+        if (!perRowKey[key]) { perRowKey[key] = {}; SIZES.forEach(sz => perRowKey[key][sz] = 0); }
+
         SIZES.forEach(sz => {
           const qty = parseInt(item.sizes?.[sz]) || 0;
-          result[sz]     += qty;
-          result._total  += qty;
+          result[sz]      += qty;
+          result._total   += qty;
+          perRowKey[key][sz] += qty;
         });
       });
     });
@@ -459,7 +477,7 @@ function OrderDetail({ order, boxes, onBack }) {
     result._packings = [...result._packings].sort();
     result._brands   = [...result._brands];
     result._brims    = [...result._brims];
-    return result;
+    return { shipped: result, shippedPerRowKey: perRowKey };
   }, [order, boxes]);
 
   const ordered      = order.summary?.totalBySize || {};
@@ -552,8 +570,8 @@ function OrderDetail({ order, boxes, onBack }) {
         </div>
       )}
 
-      {/* Order rows detail */}
-      {order.sizes?.some(r => SIZES.some(sz => (parseInt(r.sizes?.[sz]?.quantity) || 0) > 0)) && (
+      {/* Order rows — ordered vs shipped per row */}
+      {order.sizes?.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <div className="px-4 py-2 bg-gray-50 border-b text-sm font-semibold text-gray-700">
             פירוט שורות הזמנה
@@ -561,6 +579,7 @@ function OrderDetail({ order, boxes, onBack }) {
           <table className="w-full text-xs text-center">
             <thead>
               <tr className="border-b bg-gray-50">
+                <th className="px-2 py-1 text-start w-6"></th>
                 <th className="px-2 py-1 text-start">שם כובע</th>
                 <th className="px-2 py-1">שוליים</th>
                 {SIZES.map(sz => <th key={sz} className="px-1 py-1">{sz}</th>)}
@@ -569,19 +588,39 @@ function OrderDetail({ order, boxes, onBack }) {
             </thead>
             <tbody>
               {order.sizes.map((row, idx) => {
-                const rowTotal = SIZES.reduce((s, sz) => s + (parseInt(row.sizes?.[sz]?.quantity) || 0), 0);
-                if (!rowTotal) return null;
+                const orderedTotal = SIZES.reduce((s, sz) => s + (parseInt(row.sizes?.[sz]?.quantity) || 0), 0);
+                if (!orderedTotal) return null;
+                // Match shipped by brim + crownHeight + brimFinish
+                const matchKey = `${String(row.brim||'').trim()}__${String(row.crownHeight||'').trim()}__${String(row.brimFinish||'').trim()}`;
+                const rowShipped = shippedPerRowKey[matchKey] || {};
+                const shippedTotal = SIZES.reduce((s, sz) => s + (rowShipped[sz] || 0), 0);
                 return (
-                  <tr key={idx} className="border-b hover:bg-gray-50">
-                    <td className="px-2 py-1 text-start">{row.hatName}</td>
-                    <td className="px-2 py-1">{row.brim}</td>
-                    {SIZES.map(sz => (
-                      <td key={sz} className="px-1 py-1">
-                        {(parseInt(row.sizes?.[sz]?.quantity) || 0) || ''}
-                      </td>
-                    ))}
-                    <td className="px-2 py-1 font-bold">{rowTotal}</td>
-                  </tr>
+                  <>
+                    {/* Ordered row */}
+                    <tr key={`o-${idx}`} className="border-b border-gray-100">
+                      <td className="px-2 py-1 text-xs font-semibold text-gray-500 whitespace-nowrap">הוזמן</td>
+                      <td className="px-2 py-1 text-start font-medium">{row.hatName}</td>
+                      <td className="px-2 py-1">{row.brim}</td>
+                      {SIZES.map(sz => (
+                        <td key={sz} className="px-1 py-1">
+                          {(parseInt(row.sizes?.[sz]?.quantity) || 0) || ''}
+                        </td>
+                      ))}
+                      <td className="px-2 py-1 font-bold">{orderedTotal}</td>
+                    </tr>
+                    {/* Shipped row */}
+                    <tr key={`s-${idx}`} className="border-b-2 border-gray-200 bg-green-50">
+                      <td className="px-2 py-1 text-xs font-semibold text-green-700 whitespace-nowrap">נשלח</td>
+                      <td className="px-2 py-1 text-start text-gray-400 text-xs">{row.hatName}</td>
+                      <td className="px-2 py-1 text-gray-400">{row.brim}</td>
+                      {SIZES.map(sz => (
+                        <td key={sz} className="px-1 py-1 text-green-700 font-semibold">
+                          {rowShipped[sz] || ''}
+                        </td>
+                      ))}
+                      <td className="px-2 py-1 font-bold text-green-800">{shippedTotal || ''}</td>
+                    </tr>
+                  </>
                 );
               })}
             </tbody>
