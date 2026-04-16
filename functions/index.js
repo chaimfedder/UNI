@@ -4,35 +4,24 @@ const fetch     = require('node-fetch');
 
 admin.initializeApp();
 
-/**
- * Callable function: sends a WhatsApp message to the factory group via Green API.
- * Credentials are stored server-side in Firebase Functions config — never in client code.
- *
- * Set credentials once:
- *   firebase functions:config:set \
- *     greenapi.id="7107590626" \
- *     greenapi.token="YOUR_TOKEN" \
- *     greenapi.chatid="120363099281538294@g.us"
- */
 exports.sendWhatsApp = functions.https.onCall(async (data) => {
-  const cfg = functions.config().greenapi;
-  if (!cfg?.id || !cfg?.token || !cfg?.chatid) {
-    throw new functions.https.HttpsError(
-      'failed-precondition',
-      'Green API config missing. Run: firebase functions:config:set greenapi.id=... greenapi.token=... greenapi.chatid=...'
-    );
+  const id     = process.env.GREENAPI_ID;
+  const token  = process.env.GREENAPI_TOKEN;
+  const chatid = process.env.GREENAPI_CHATID;
+
+  if (!id || !token || !chatid) {
+    throw new functions.https.HttpsError('failed-precondition', 'Green API env vars missing in functions/.env');
   }
 
-  const base = `https://api.green-api.com/waInstance${cfg.id}`;
+  const base = `https://api.green-api.com/waInstance${id}`;
 
-  // Send file + caption when a file URL is provided, otherwise plain text
   const endpoint = data.fileUrl
-    ? `${base}/sendFileByUrl/${cfg.token}`
-    : `${base}/sendMessage/${cfg.token}`;
+    ? `${base}/sendFileByUrl/${token}`
+    : `${base}/sendMessage/${token}`;
 
   const body = data.fileUrl
-    ? { chatId: cfg.chatid, urlFile: data.fileUrl, fileName: data.fileName || 'order.xlsx', caption: data.message || '' }
-    : { chatId: cfg.chatid, message: data.message };
+    ? { chatId: chatid, urlFile: data.fileUrl, fileName: data.fileName || 'order.xlsx', caption: data.message || '' }
+    : { chatId: chatid, message: data.message };
 
   const res = await fetch(endpoint, {
     method: 'POST',
