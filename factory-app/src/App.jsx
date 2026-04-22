@@ -8,6 +8,7 @@ import NewOrdersTab    from './components/NewOrders/NewOrdersTab';
 import PackingTab      from './components/Packing/PackingTab';
 import PackingListsTab from './components/PackingLists/PackingListsTab';
 import OrderTrackingTab from './components/OrderTracking/OrderTrackingTab';
+import InvoicesTab      from './components/Invoices/InvoicesTab';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -46,6 +47,7 @@ export default function App() {
                   <Route path="/packing"         element={<PackingTab />} />
                   <Route path="/packing-lists"   element={<PackingListsTab />} />
                   <Route path="/tracking"        element={<OrderTrackingTab />} />
+                  <Route path="/invoices"        element={<InvoicesTab />} />
                 </Routes>
               </main>
             </div>

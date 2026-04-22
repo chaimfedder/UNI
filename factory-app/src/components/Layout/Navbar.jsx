@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: '/packing',       key: 'nav.packing',       icon: '📦' },
   { to: '/packing-lists', key: 'nav.packingLists',  icon: '🗂️' },
   { to: '/tracking',      key: 'nav.orderTracking', icon: '🔍' },
+  { to: '/invoices',      key: 'nav.invoices',      icon: '🧾' },
 ];
 
 export default function Navbar() {
