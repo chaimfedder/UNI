@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ───────────────────────────────────────────────────── */
+@layer base {
+  body {
+    font-family: 'Rubik', ui-sans-serif, system-ui, sans-serif;
+    background-color: #FAF8F3;
+    color: #1A1A1A;
+  }
+}
+
+/* RTL / LTR direction handled dynamically via html[dir] */
+
+/* Smooth direction transitions */
+* {
+  transition: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF8F3;
+}
+::-webkit-scrollbar-thumb {
+  background: #C9A84C;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A07830;
+}
+
+/* Table styles */
+.factory-table {
+  @apply w-full border-collapse text-xs sm:text-sm;
+}
+.factory-table th {
+  background-color: #1A1A1A;
+  color: #E8C84A;
+  @apply border border-charcoal-700 px-1 sm:px-2 py-1 font-semibold text-center whitespace-nowrap;
+}
+.factory-table td {
+  @apply border border-gray-200 px-1 sm:px-2 py-1 text-center;
+}
+.factory-table tr:hover td {
+  background-color: #FFFBEB;
+}
+.factory-table input[type="number"],
+.factory-table input[type="text"] {
+  @apply w-full border-0 bg-transparent text-center focus:outline-none focus:ring-1 focus:ring-gold-500 rounded;
+  min-width: 32px;
+}
+
+/* Card */
+.card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-200;
+}
+.card-header {
+  @apply px-4 py-3 border-b border-gray-200 font-semibold text-charcoal-800 flex items-center justify-between;
+}
+.card-body {
+  @apply p-4;
+}
+
+/* Buttons */
+.btn {
+  @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors cursor-pointer;
+  min-height: 40px;
+}
+.btn-primary {
+  background-color: #C9A84C;
+  color: #0F0F0F;
+  @apply btn font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-secondary {
+  @apply btn bg-gray-100 text-gray-700 hover:bg-gray-200;
+}
+.btn-success {
+  @apply btn bg-green-600 text-white hover:bg-green-700;
+}
+.btn-danger {
+  @apply btn bg-red-600 text-white hover:bg-red-700;
+}
+.btn-warning {
+  @apply btn bg-yellow-500 text-white hover:bg-yellow-600;
+}
+.btn-sm {
+  @apply px-3 py-2 text-xs;
+  min-height: 36px;
+}
+.btn-lg {
+  @apply px-6 py-3 text-base;
+}
+
+/* Form controls */
+.form-input {
+  @apply block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
+         focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent;
+  min-height: 42px;
+}
+.form-label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+.form-select {
+  @apply form-input bg-white;
+}
+.input-field {
+  @apply block border border-gray-300 rounded-lg px-3 py-2 text-sm
+         focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent;
+}
+.input-sm {
+  @apply px-2 py-1 text-xs;
+}
+
+/* Status badges */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+.badge-ordered  { @apply badge bg-gold-100 text-gold-800; }
+.badge-partial  { @apply badge bg-yellow-100 text-yellow-800; }
+.badge-shipped  { @apply badge bg-green-100 text-green-800; }
+.badge-open     { @apply badge bg-gray-100 text-gray-700; }
+.badge-closed   { @apply badge bg-purple-100 text-purple-800; }
+.badge-blue     { @apply badge bg-gold-100 text-gold-800; }
+.badge-green    { @apply badge bg-green-100 text-green-800; }
+.badge-gray     { @apply badge bg-gray-200 text-gray-700; }
+.badge-yellow   { @apply badge bg-yellow-100 text-yellow-800; }
+
+/* Button extra sizes */
+.btn-xs { @apply px-2 py-1 text-xs; }
+
+/* Packing model/finish colors */
+.model-K02 { background-color: #000080; color: white; }
+.model-K03 { background-color: #800020; color: white; }
+.model-K04 { background-color: #808080; color: white; }
+.model-K05 { background-color: #FFFFFF; color: black; border: 2px solid black; }
+.model-K06 { background-color: #FFD700; color: black; }
+.model-K88 { background-color: #FFFF00; color: black; }
+.model-K82 { background-color: #8B4513; color: white; }
+.model-F92, .model-D92 { background-color: #87CEEB; color: black; }
+.model-F94, .model-D94 { background-color: #000080; color: white; }
+.model-F95, .model-D95 { background-color: #C0C0C0; color: black; }
+
+.finish-B { background-color: #FF0000; color: white; }
+.finish-D { background-color: #90EE90; color: black; }
+.finish-S { background-color: #C0C0C0; color: black; }
+.finish-R { background-color: #FFFFFF; color: black; border: 2px solid black; }
+
+/* Highlighted table cell */
+.highlighted-cell {
+  @apply bg-yellow-200;
+}
+
+/* Alert */
+.alert {
+  @apply px-4 py-3 rounded-lg border text-sm;
+}
+.alert-success { @apply alert bg-green-50 border-green-200 text-green-800; }
+.alert-error   { @apply alert bg-red-50   border-red-200   text-red-800; }
+.alert-info    { @apply alert bg-gold-50  border-gold-200  text-gold-800; }
+.alert-warning { @apply alert bg-yellow-50 border-yellow-200 text-yellow-800; }
