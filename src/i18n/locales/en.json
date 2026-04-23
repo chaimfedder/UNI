@@ -86,7 +86,17 @@
     "ordersList": "Orders List",
     "deleteConfirm": "Delete this order?",
     "deleteSuccess": "Order deleted",
-    "noOrders": "No orders"
+    "noOrders": "No orders",
+    "noModel": "Please enter a model",
+    "instructions": "Instructions",
+    "waTitle": "Send WhatsApp Update",
+    "waSendFilePrefix": "Send file",
+    "waSendGroupSuffix": "to the test group?",
+    "waSkip": "Skip",
+    "waSend": "Send",
+    "waSending": "Sending...",
+    "waSentSuccess": "Message sent to group",
+    "waError": "Send error"
   },
   "packing": {
     "title": "Packing System",
@@ -140,7 +150,21 @@
     "found": "Found",
     "notFound": "Not Found",
     "syncedToFirebase": "Synced to Firebase",
-    "syncError": "Firebase sync error"
+    "syncError": "Firebase sync error",
+    "boxesToday": "Boxes Today",
+    "boxesWeek": "Boxes This Week",
+    "openLists": "Open Packing Lists",
+    "inProgress": "In Progress",
+    "shippedLists": "Shipped",
+    "allTime": "All Time",
+    "recentBoxes": "Recently Packed Boxes",
+    "packing": "Packing",
+    "box": "Box",
+    "size": "Size",
+    "items": "Items",
+    "time": "Time",
+    "noData": "No data yet",
+    "boxes": "Boxes"
   },
   "packingLists": {
     "title": "Packing Lists",
@@ -237,7 +261,27 @@
     "deleteRowConfirm": "Delete this row?",
     "extractError": "Extraction error",
     "saveError": "Save error",
-    "noInvoiceNumber": "Please enter an invoice number"
+    "noInvoiceNumber": "Please enter an invoice number",
+    "viewInvoices": "Invoice View",
+    "viewMaterials": "Materials View"
+  },
+  "inventory": {
+    "rawMaterials": "Raw Materials",
+    "materialSelector": "Select Raw Materials",
+    "availableStock": "Available Stock",
+    "usedStock": "Used (OUT)",
+    "inStock": "In (IN)",
+    "remaining": "Remaining",
+    "selectedQty": "Selected Qty",
+    "afterSelection": "After Selection",
+    "selectedSummary": "Selected Materials",
+    "noMaterials": "No raw materials selected for this order",
+    "noAvailableMaterials": "No raw materials available — add invoices first",
+    "ordersUsed": "Orders that used this material",
+    "quantityTaken": "Quantity taken",
+    "saveError": "Error saving inventory movements",
+    "deleteError": "Error deleting inventory movements",
+    "selected": "selected"
   },
   "common": {
     "save": "Save",
@@ -261,6 +305,8 @@
     "status": "Status",
     "notes": "Notes",
     "date": "Date",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "collapse": "Collapse",
+    "expand": "Expand"
   }
 }

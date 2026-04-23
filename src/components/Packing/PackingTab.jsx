@@ -59,21 +59,21 @@ export default function PackingTab() {
 
       {/* ── Stat cards ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="קרטונים היום"   value={stats.boxesToday}  sub={`${stats.itemsToday} פריטים`}  color="gold" />
-        <StatCard label="קרטונים השבוע"  value={stats.boxesWeek}   sub={`${stats.itemsWeek} פריטים`}   color="gold" />
-        <StatCard label="אריזות פתוחות"  value={stats.openLists}   sub="בעבודה"                        color="orange" />
-        <StatCard label="אריזות שנשלחו"  value={stats.shippedLists} sub="מכל הזמן"                    color="green" />
+        <StatCard label={t('packing.boxesToday')}   value={stats.boxesToday}  sub={`${stats.itemsToday} ${t('packing.items')}`}  color="gold" />
+        <StatCard label={t('packing.boxesWeek')}    value={stats.boxesWeek}   sub={`${stats.itemsWeek} ${t('packing.items')}`}   color="gold" />
+        <StatCard label={t('packing.openLists')}    value={stats.openLists}   sub={t('packing.inProgress')}                      color="orange" />
+        <StatCard label={t('packing.shippedLists')} value={stats.shippedLists} sub={t('packing.allTime')}                        color="green" />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
-        <StatCard label="סה״כ קרטונים"  value={stats.totalBoxes} color="gray" />
-        <StatCard label="סה״כ פריטים"   value={stats.totalItems} color="gray" />
+        <StatCard label={t('packing.totalBoxes')}  value={stats.totalBoxes} color="gray" />
+        <StatCard label={t('packing.totalItems')}  value={stats.totalItems} color="gray" />
       </div>
 
       {/* ── Open packing lists ───────────────────────────────────────────── */}
       {packingLists.filter(pl => pl.status !== 'shipped').length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <h2 className="font-semibold text-gray-700 mb-3 text-sm">אריזות פתוחות</h2>
+          <h2 className="font-semibold text-gray-700 mb-3 text-sm">{t('packing.openLists')}</h2>
           <div className="flex flex-wrap gap-2">
             {packingLists
               .filter(pl => pl.status !== 'shipped')
@@ -82,7 +82,7 @@ export default function PackingTab() {
                 <div key={pl._id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border" style={{ backgroundColor: '#FBF5DC', borderColor: '#E8C84A' }}>
                   <span className="font-bold" style={{ color: '#A07830' }}>#{pl.packingNumber}</span>
                   {pl.totalBoxes !== undefined && (
-                    <span className="text-xs" style={{ color: '#C9A84C' }}>{pl.totalBoxes} קרטונים</span>
+                    <span className="text-xs" style={{ color: '#C9A84C' }}>{pl.totalBoxes} {t('packing.boxes')}</span>
                   )}
                 </div>
               ))}
@@ -94,17 +94,17 @@ export default function PackingTab() {
       {stats.recent.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-700 text-sm">קרטונים אחרונים שנארזו</h2>
+            <h2 className="font-semibold text-gray-700 text-sm">{t('packing.recentBoxes')}</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 text-xs text-gray-500">
-                  <th className="px-3 py-2 text-start">אריזה</th>
-                  <th className="px-3 py-2 text-start">קרטון</th>
-                  <th className="px-3 py-2 text-start">גודל</th>
-                  <th className="px-3 py-2 text-start">פריטים</th>
-                  <th className="px-3 py-2 text-start">שעה</th>
+                  <th className="px-3 py-2 text-start">{t('packing.packing')}</th>
+                  <th className="px-3 py-2 text-start">{t('packing.box')}</th>
+                  <th className="px-3 py-2 text-start">{t('packing.size')}</th>
+                  <th className="px-3 py-2 text-start">{t('packing.items')}</th>
+                  <th className="px-3 py-2 text-start">{t('packing.time')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,7 +133,7 @@ export default function PackingTab() {
       )}
 
       {boxes.length === 0 && (
-        <div className="text-center py-16 text-gray-400">אין נתונים עדיין</div>
+        <div className="text-center py-16 text-gray-400">{t('packing.noData')}</div>
       )}
     </div>
   );

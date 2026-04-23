@@ -4,8 +4,45 @@ import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase/config';
 import * as XLSX from 'xlsx-js-style';
+import { saveOrderMovements } from '../../firebase/inventory';
+import MaterialSelector from '../Inventory/MaterialSelector';
 
 const SIZES = [51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63];
+
+// ── Row validation helpers ────────────────────────────────────
+// Rows containing any of these keywords are decorative/attribute rows
+// and must never be saved to the DB.
+const FORBIDDEN_ROW_KEYWORDS = [
+  'LEATHER', 'IMPRINTING', 'COLOR', 'DETAILS', 'WIDTH', 'LINING', 'ROOF', 'WALL',
+];
+
+function isForbiddenRow(row) {
+  return row.some(cell => {
+    const val = String(cell ?? '').trim().toUpperCase();
+    return FORBIDDEN_ROW_KEYWORDS.some(kw => val.includes(kw));
+  });
+}
+
+function isRealOrderRow(row, sizeColMap) {
+  if (!row || row.length === 0) return false;
+  if (isForbiddenRow(row)) return false;
+
+  const col0 = String(row[0] ?? '').trim().toUpperCase();
+  if (col0.includes('TOTAL')) return false;
+
+  let count = 0;
+  for (let c = 0; c <= 5; c++) {
+    if (String(row[c] ?? '').trim() !== '') count++;
+  }
+
+  const hasQty = Object.values(sizeColMap).some(col => {
+    const qty = parseInt(row[col]);
+    return !isNaN(qty) && qty > 0;
+  });
+  if (hasQty) count++;
+
+  return count >= 2;
+}
 
 export default function ImportOrderExcel() {
   const { t } = useTranslation();
@@ -13,11 +50,15 @@ export default function ImportOrderExcel() {
 
   const [orderNumber, setOrderNumber] = useState('');
   const [model,       setModel]       = useState('');
-  const [preview, setPreview]         = useState(null);  // parsed order data
+  const [preview, setPreview]         = useState(null);
   const [editMode, setEditMode]       = useState(false);
   const [editHeader, setEditHeader]   = useState({});
   const [toast, setToast]             = useState(null);
   const [saving, setSaving]           = useState(false);
+  const [waModal, setWaModal]         = useState(null);
+  const [sendingWA, setSendingWA]     = useState(false);
+  const [selectedMaterials, setSelectedMaterials] = useState([]);
+  const [showMaterials, setShowMaterials]         = useState(false);
 
   function showToast(type, msg) {
     setToast({ type, msg });
@@ -29,7 +70,7 @@ export default function ImportOrderExcel() {
     const file = fileRef.current?.files?.[0];
     if (!file) { showToast('error', t('orders.chooseExcel')); return; }
     if (!orderNumber.trim()) { showToast('error', t('orders.noOrderNumber')); return; }
-    if (!model.trim()) { showToast('error', 'יש להזין מודל'); return; }
+    if (!model.trim()) { showToast('error', t('orders.noModel')); return; }
 
     const reader = new FileReader();
     reader.onload = e => {
@@ -60,7 +101,6 @@ export default function ImportOrderExcel() {
       model: '', brand: '', bodyType: '', bodyOrder: '', invoiceNumber: '',
     };
 
-    // Row index 1 (second row) has header data
     if (jsonData.length >= 2) {
       const row = jsonData[1] || [];
       if (row[0]) header.orderDate  = row[0].toString();
@@ -102,13 +142,12 @@ export default function ImportOrderExcel() {
       if (v >= 51 && v <= 63) sizeColMap[v] = c;
     }
 
-    // Parse data rows
+    // Parse data rows — skip decorative/attribute rows
     const sizes = [];
     for (let i = sizesRow + 1; i < jsonData.length; i++) {
       const row = jsonData[i];
-      if (!row || !row[0]) continue;
-      const hatName = String(row[0]).trim();
-      if (!hatName || hatName.toLowerCase().includes('total') || hatName === '') continue;
+      if (!isRealOrderRow(row, sizeColMap)) continue;
+      const hatName = String(row[0] || '').trim();
 
       const sizeData = {};
       SIZES.forEach(sz => {
@@ -131,7 +170,6 @@ export default function ImportOrderExcel() {
       });
     }
 
-    // Summary
     const totalBySize = {};
     SIZES.forEach(sz => {
       totalBySize[sz] = sizes.reduce((s, r) => s + (r.sizes[sz]?.quantity || 0), 0);
@@ -153,7 +191,6 @@ export default function ImportOrderExcel() {
         if (!window.confirm(t('orders.duplicateConfirm'))) { setSaving(false); return; }
       }
 
-      // Upload original Excel file to Firebase Storage
       let originalFile = existing.exists() ? (existing.data().originalFile || null) : null;
       const file = fileRef.current?.files?.[0];
       if (file) {
@@ -179,10 +216,18 @@ export default function ImportOrderExcel() {
         ...(originalFile ? { originalFile } : {}),
       };
       await setDoc(dbRef, payload);
+      await saveOrderMovements(finalHeader.orderNumber.trim(), finalHeader.brand, selectedMaterials);
       showToast('success', t('orders.saveSuccess'));
+      const waMessage = buildWAMessage(finalHeader, preview.summary);
       setPreview(null);
       setOrderNumber('');
+      setSelectedMaterials([]);
       if (fileRef.current) fileRef.current.value = '';
+      setWaModal({
+        message:  waMessage,
+        fileUrl:  originalFile?.url  || null,
+        fileName: originalFile?.name || 'order.xlsx',
+      });
     } catch (err) {
       console.error(err);
       showToast('error', t('orders.saveError') + ': ' + err.message);
@@ -191,11 +236,86 @@ export default function ImportOrderExcel() {
     }
   }
 
+  function buildWAMessage(header, summary) {
+    const lines = [
+      '🆕 *הזמנה חדשה התקבלה*',
+      '━━━━━━━━━━━━━━━━━━',
+      `📋 מספר הזמנה: ${header.orderNumber}`,
+      header.orderedBy  ? `👤 לקוח: ${header.orderedBy}`   : null,
+      header.model      ? `🎩 מודל: ${header.model}`        : null,
+      header.orderDate  ? `📅 תאריך: ${header.orderDate}`   : null,
+      `📦 סה״כ כובעים: ${summary.grandTotal}`,
+      '━━━━━━━━━━━━━━━━━━',
+    ];
+    return lines.filter(Boolean).join('\n');
+  }
+
+  async function handleSendWhatsApp() {
+    setSendingWA(true);
+    try {
+      const res = await fetch(
+        'https://us-central1-factory-m.cloudfunctions.net/sendWhatsApp',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message:  waModal.message,
+            fileUrl:  waModal.fileUrl,
+            fileName: waModal.fileName,
+          }),
+        }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      showToast('success', '✅ ' + t('orders.waSentSuccess'));
+    } catch (err) {
+      showToast('error', t('orders.waError') + ': ' + err.message);
+    } finally {
+      setSendingWA(false);
+      setWaModal(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {toast && (
         <div className={`alert-${toast.type === 'success' ? 'success' : 'error'} fixed top-4 right-4 z-50 shadow-lg`}>
           {toast.msg}
+        </div>
+      )}
+
+      {/* WhatsApp confirmation modal */}
+      {waModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+            <h3 className="font-bold text-lg">📲 {t('orders.waTitle')}</h3>
+            <p className="text-sm text-gray-500">
+              {t('orders.waSendFilePrefix')}{' '}
+              <strong className="text-green-700">{waModal.fileName}</strong>{' '}
+              {t('orders.waSendGroupSuffix')}
+            </p>
+            <pre
+              dir="rtl"
+              className="bg-gray-50 border rounded-xl p-3 text-sm whitespace-pre-wrap leading-relaxed font-sans"
+            >
+              {waModal.message}
+            </pre>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setWaModal(null)}
+                className="btn-secondary"
+                disabled={sendingWA}
+              >
+                {t('orders.waSkip')}
+              </button>
+              <button
+                onClick={handleSendWhatsApp}
+                disabled={sendingWA}
+                className="btn-success"
+              >
+                {sendingWA ? `⏳ ${t('orders.waSending')}` : `📤 ${t('orders.waSend')}`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -236,6 +356,15 @@ export default function ImportOrderExcel() {
                   className="form-input file:mr-3 file:py-1 file:px-3 file:rounded file:border-0
                              file:text-sm file:font-semibold"
                   style={{ '--file-bg': '#FBF5DC', '--file-color': '#7A5C20' }}
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const name = file.name.replace(/\.xlsx?$/i, '');
+                    const m = name.match(/^(\d{3,4})\s+([A-Z][A-Z0-9]{1,3})/i);
+                    if (!m) return;
+                    if (!orderNumber.trim()) setOrderNumber(m[1]);
+                    if (!model.trim()) setModel(m[2].toUpperCase());
+                  }}
                 />
                 <p className="text-xs text-gray-500 mt-1">{t('orders.excelHint')}</p>
               </div>
@@ -245,7 +374,7 @@ export default function ImportOrderExcel() {
             </div>
             {/* Right: instructions */}
             <div className="alert-info text-sm">
-              <p className="font-semibold mb-2">Instructions:</p>
+              <p className="font-semibold mb-2">{t('orders.instructions')}:</p>
               <ul className="list-disc list-inside space-y-1" style={{ color: '#7A5C20' }}>
                 <li>Row 2: order date, customer, model, body type, body order</li>
                 <li>Find row with <b>HAT NAME</b> column</li>
@@ -259,105 +388,138 @@ export default function ImportOrderExcel() {
 
       {/* Preview */}
       {preview && (
-        <div className="card">
-          <div className="card-header bg-green-50">
-            <span className="text-green-800">{t('orders.previewSection')}</span>
-            <button onClick={saveToDb} disabled={saving} className="btn-success btn-sm">
-              {saving ? t('common.loading') : `💾 ${t('orders.saveToDb')}`}
-            </button>
-          </div>
-          <div className="card-body space-y-4">
-            {/* Header */}
-            <div className="card border border-gray-100">
-              <div className="card-header text-sm">
-                <span>{t('orders.orderDetails')}</span>
-                <button
-                  onClick={() => setEditMode(m => !m)}
-                  className="btn-secondary btn-sm"
-                >
-                  {editMode ? t('orders.cancelEdit') : t('orders.editHeader')}
-                </button>
-              </div>
-              <div className="card-body">
-                {editMode ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {Object.entries(editHeader).map(([field, val]) => (
-                      <div key={field}>
-                        <label className="form-label capitalize">{field === 'brand' ? 'מותג (3 תווים)' : field.replace(/([A-Z])/g,' $1')}</label>
-                        <input
-                          className={`form-input ${field === 'brand' ? 'uppercase font-mono tracking-widest' : ''}`}
-                          value={val}
-                          disabled={field === 'orderNumber'}
-                          maxLength={field === 'brand' ? 3 : undefined}
-                          onChange={e => setEditHeader(h => ({
-                            ...h,
-                            [field]: field === 'brand' ? e.target.value.toUpperCase() : e.target.value,
-                          }))}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm">
-                    {Object.entries(preview.header).map(([k, v]) => v ? (
-                      <p key={k}><span className="text-gray-500">{k}: </span><strong>{v}</strong></p>
-                    ) : null)}
-                  </div>
-                )}
-              </div>
+        <div className="space-y-4">
+          <div className="card">
+            <div className="card-header bg-green-50">
+              <span className="text-green-800">{t('orders.previewSection')}</span>
+              <button onClick={saveToDb} disabled={saving} className="btn-success btn-sm">
+                {saving ? t('common.loading') : `💾 ${t('orders.saveToDb')}`}
+              </button>
             </div>
+            <div className="card-body space-y-4">
+              {/* Header */}
+              <div className="card border border-gray-100">
+                <div className="card-header text-sm">
+                  <span>{t('orders.orderDetails')}</span>
+                  <button
+                    onClick={() => setEditMode(m => !m)}
+                    className="btn-secondary btn-sm"
+                  >
+                    {editMode ? t('orders.cancelEdit') : t('orders.editHeader')}
+                  </button>
+                </div>
+                <div className="card-body">
+                  {editMode ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {Object.entries(editHeader).map(([field, val]) => (
+                        <div key={field}>
+                          <label className="form-label capitalize">{field === 'brand' ? 'מותג (3 תווים)' : field.replace(/([A-Z])/g,' $1')}</label>
+                          <input
+                            className={`form-input ${field === 'brand' ? 'uppercase font-mono tracking-widest' : ''}`}
+                            value={val}
+                            disabled={field === 'orderNumber'}
+                            maxLength={field === 'brand' ? 3 : undefined}
+                            onChange={e => setEditHeader(h => ({
+                              ...h,
+                              [field]: field === 'brand' ? e.target.value.toUpperCase() : e.target.value,
+                            }))}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-sm">
+                      {Object.entries(preview.header).map(([k, v]) => v ? (
+                        <p key={k}><span className="text-gray-500">{k}: </span><strong>{v}</strong></p>
+                      ) : null)}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-            {/* Sizes */}
-            <div className="card border border-gray-100">
-              <div className="card-header text-sm">{t('orders.sizeDetails')}</div>
-              <div className="card-body p-0 overflow-x-auto">
-                <table className="factory-table">
-                  <thead>
-                    <tr>
-                      <th>{t('orders.hatName')}</th>
-                      <th>{t('orders.quality')}</th>
-                      <th>{t('orders.crownHeight')}</th>
-                      <th>{t('orders.brim')}</th>
-                      <th>{t('orders.brimFinish')}</th>
-                      <th>{t('orders.ribbonHeight')}</th>
-                      {SIZES.map(s => <th key={s}>{s}</th>)}
-                      <th>{t('orders.total')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {preview.sizes.map(r => (
-                      <tr key={r.id}>
-                        <td className="text-start px-2">{r.hatName}</td>
-                        <td>{r.quality}</td>
-                        <td>{r.crownHeight}</td>
-                        <td>{r.brim}</td>
-                        <td>{r.brimFinish}</td>
-                        <td>{r.ribbonHeight}</td>
+              {/* Sizes */}
+              <div className="card border border-gray-100">
+                <div className="card-header text-sm">{t('orders.sizeDetails')}</div>
+                <div className="card-body p-0 overflow-x-auto">
+                  <table className="factory-table">
+                    <thead>
+                      <tr>
+                        <th>{t('orders.hatName')}</th>
+                        <th>{t('orders.quality')}</th>
+                        <th>{t('orders.crownHeight')}</th>
+                        <th>{t('orders.brim')}</th>
+                        <th>{t('orders.brimFinish')}</th>
+                        <th>{t('orders.ribbonHeight')}</th>
+                        {SIZES.map(s => <th key={s}>{s}</th>)}
+                        <th>{t('orders.total')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.sizes.map(r => (
+                        <tr key={r.id}>
+                          <td className="text-start px-2">{r.hatName}</td>
+                          <td>{r.quality}</td>
+                          <td>{r.crownHeight}</td>
+                          <td>{r.brim}</td>
+                          <td>{r.brimFinish}</td>
+                          <td>{r.ribbonHeight}</td>
+                          {SIZES.map(sz => (
+                            <td key={sz} className={r.sizes[sz]?.highlighted ? 'bg-yellow-200' : ''}>
+                              {r.sizes[sz]?.quantity || ''}
+                            </td>
+                          ))}
+                          <td className="font-semibold" style={{ color: '#A07830' }}>{r.total}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-50 font-bold">
+                        <td colSpan={6} className="text-center text-sm">{t('orders.grandTotal')}</td>
                         {SIZES.map(sz => (
-                          <td key={sz} className={r.sizes[sz]?.highlighted ? 'bg-yellow-200' : ''}>
-                            {r.sizes[sz]?.quantity || ''}
+                          <td key={sz} className="text-center" style={{ color: '#A07830' }}>
+                            {preview.summary.totalBySize[sz] || 0}
                           </td>
                         ))}
-                        <td className="font-semibold" style={{ color: '#A07830' }}>{r.total}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gray-50 font-bold">
-                      <td colSpan={6} className="text-center text-sm">{t('orders.grandTotal')}</td>
-                      {SIZES.map(sz => (
-                        <td key={sz} className="text-center" style={{ color: '#A07830' }}>
-                          {preview.summary.totalBySize[sz] || 0}
+                        <td className="text-center font-bold" style={{ color: '#A07830' }}>
+                          {preview.summary.grandTotal}
                         </td>
-                      ))}
-                      <td className="text-center font-bold" style={{ color: '#A07830' }}>
-                        {preview.summary.grandTotal}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* Raw Materials */}
+          <div className="card">
+            <div className="card-header">
+              <span>
+                {t('inventory.rawMaterials')}
+                {selectedMaterials.length > 0 && (
+                  <span className="ms-2 text-xs font-normal px-1.5 py-0.5 rounded-full"
+                        style={{ backgroundColor: '#C9A84C', color: '#111' }}>
+                    {selectedMaterials.length} {t('inventory.selected')}
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowMaterials(p => !p)}
+                className="btn-secondary btn-sm text-xs"
+              >
+                {showMaterials ? `▲ ${t('common.collapse')}` : `▼ ${t('common.expand')}`}
+              </button>
+            </div>
+            {showMaterials && (
+              <div className="card-body">
+                <MaterialSelector
+                  value={selectedMaterials}
+                  onChange={setSelectedMaterials}
+                  orderNumber={(editMode ? editHeader.orderNumber : preview.header.orderNumber) || null}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

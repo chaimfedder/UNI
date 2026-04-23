@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import InvoiceTable from './InvoiceTable';
 import UploadInvoicePDF from './UploadInvoicePDF';
 import ManualInvoiceForm from './ManualInvoiceForm';
 
 export default function InvoicesTab() {
+  const { t } = useTranslation();
   const [view,     setView]     = useState('table'); // 'table' | 'upload' | 'manual'
   const [viewMode, setViewMode] = useState('invoice'); // 'invoice' | 'material'
 
@@ -11,8 +13,8 @@ export default function InvoicesTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>פפסה</h1>
-          <p className="text-sm text-gray-500">ניהול חשבוניות ספקים</p>
+          <h1 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>{t('nav.invoices')}</h1>
+          <p className="text-sm text-gray-500">{t('invoices.subtitle')}</p>
         </div>
 
         {view === 'table' ? (
@@ -26,7 +28,7 @@ export default function InvoicesTab() {
                   ? { backgroundColor: '#C9A84C', color: '#111' }
                   : { backgroundColor: 'white', color: '#555' }}
               >
-                תצוגת חשבוניות
+                {t('invoices.viewInvoices')}
               </button>
               <button
                 onClick={() => setViewMode('material')}
@@ -35,20 +37,20 @@ export default function InvoicesTab() {
                   ? { backgroundColor: '#C9A84C', color: '#111' }
                   : { backgroundColor: 'white', color: '#555' }}
               >
-                תצוגת חומרי גלם
+                {t('invoices.viewMaterials')}
               </button>
             </div>
 
             <button onClick={() => setView('upload')} className="btn-primary">
-              📤 העלה PDF
+              📤 {t('invoices.uploadPdf')}
             </button>
             <button onClick={() => setView('manual')} className="btn-secondary">
-              ✏️ הזנה ידנית
+              ✏️ {t('invoices.manualEntry')}
             </button>
           </div>
         ) : (
           <button onClick={() => setView('table')} className="btn-secondary">
-            ← חזור לרשימה
+            ← {t('invoices.backToList')}
           </button>
         )}
       </div>

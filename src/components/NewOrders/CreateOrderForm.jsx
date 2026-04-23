@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import * as XLSX from 'xlsx-js-style';
+import { exportOrderToExcel } from './exportOrderToExcel';
+import { saveOrderMovements } from '../../firebase/inventory';
+import MaterialSelector from '../Inventory/MaterialSelector';
 
 // Sizes range used across the system
 const SIZES = [51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63];
@@ -50,8 +53,10 @@ export default function CreateOrderForm() {
     orderNumber: '', orderDate: today, orderedBy: '',
     brand: '', bodyType: '', bodyOrder: '', invoiceNumber: '',
   });
-  const [rows, setRows]     = useState([emptyRow()]);
-  const [specs, setSpecs]   = useState(emptySpecs());
+  const [rows, setRows]         = useState([emptyRow()]);
+  const [specs, setSpecs]       = useState(emptySpecs());
+  const [selectedMaterials, setSelectedMaterials] = useState([]);
+  const [showMaterials, setShowMaterials]         = useState(false);
   const [toast, setToast]   = useState(null); // { type, msg }
   const [saving, setSaving] = useState(false);
 
@@ -109,7 +114,8 @@ export default function CreateOrderForm() {
 
     setSaving(true);
     try {
-      const ref = doc(db, 'orders', header.orderNumber.trim());
+      const orderNumber = header.orderNumber.trim();
+      const ref = doc(db, 'orders', orderNumber);
       const existing = await getDoc(ref);
       if (existing.exists()) {
         if (!window.confirm(t('orders.duplicateConfirm'))) { setSaving(false); return; }
@@ -118,8 +124,8 @@ export default function CreateOrderForm() {
       const summary = calcSummary(rows);
       const payload = {
         ...header,
-        orderNumber: header.orderNumber.trim(),
-        model: header.brand, // keep model = brand for compatibility with import/export
+        orderNumber,
+        model: header.brand,
         sizes: rows.map(r => ({ ...r })),
         specs,
         summary,
@@ -128,6 +134,10 @@ export default function CreateOrderForm() {
         updatedAt: serverTimestamp(),
       };
       await setDoc(ref, payload);
+
+      // Save OUT movements — atomic delete-and-recreate handled inside saveOrderMovements
+      await saveOrderMovements(orderNumber, header.brand, selectedMaterials);
+
       showToast('success', t('orders.saveSuccess'));
       if (window.confirm(t('orders.clearForm') + '?')) clearForm();
     } catch (err) {
@@ -142,39 +152,19 @@ export default function CreateOrderForm() {
     setHeader({ orderNumber: '', orderDate: today, orderedBy: '', brand: '', bodyType: '', bodyOrder: '', invoiceNumber: '' });
     setRows([emptyRow()]);
     setSpecs(emptySpecs());
+    setSelectedMaterials([]);
   }
 
   // ── Excel export ─────────────────────────────────────────────
-  function exportExcel() {
+  function handleExport() {
     const summary = calcSummary(rows);
-    const wb = XLSX.utils.book_new();
-    const wsData = [];
-
-    // Title row
-    wsData.push(['', header.orderDate, header.orderedBy, '', header.model, header.orderNumber, '', '', '', '', '', header.bodyType, '', '', '', header.bodyOrder]);
-    wsData.push([]);
-
-    // Header row
-    wsData.push(['HAT NAME', 'QUALITY', 'CROWN H.', 'BRIM', 'BRIM FINISH', 'RIBBON H.',
-      ...SIZES, 'TOTAL']);
-
-    rows.forEach(r => {
-      wsData.push([
-        r.hatName, r.quality, r.crownHeight, r.brim, r.brimFinish, r.ribbonHeight,
-        ...SIZES.map(s => r.sizes[s]?.quantity || 0),
-        calcRowTotal(r),
-      ]);
+    exportOrderToExcel({
+      header: { ...header, orderNumber: header.orderNumber || 'draft', model: header.brand },
+      sizes: rows.map(r => ({ ...r })),
+      specs,
+      summary,
+      materials: selectedMaterials,
     });
-
-    // Totals
-    wsData.push(['', '', '', '', '', 'TOTAL',
-      ...SIZES.map(s => summary.totalBySize[s] || 0),
-      summary.grandTotal,
-    ]);
-
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    XLSX.utils.book_append_sheet(wb, ws, 'Order');
-    XLSX.writeFile(wb, `Order_${header.orderNumber || 'draft'}.xlsx`);
   }
 
   const summary = calcSummary(rows);
@@ -421,13 +411,45 @@ export default function CreateOrderForm() {
         </div>
       </div>
 
+      {/* ── Raw Materials ── */}
+      <div className="card">
+        <div className="card-header">
+          <span>
+            חומרי גלם
+            {selectedMaterials.length > 0 && (
+              <span className="ms-2 text-xs font-normal px-1.5 py-0.5 rounded-full"
+                    style={{ backgroundColor: '#C9A84C', color: '#111' }}>
+                {selectedMaterials.length} נבחרו
+              </span>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowMaterials(p => !p)}
+            className="btn-secondary btn-sm text-xs"
+          >
+            {showMaterials ? '▲ כווץ' : '▼ הרחב'}
+          </button>
+        </div>
+
+        {showMaterials && (
+          <div className="card-body">
+            <MaterialSelector
+              value={selectedMaterials}
+              onChange={setSelectedMaterials}
+              orderNumber={header.orderNumber.trim() || null}
+            />
+          </div>
+        )}
+      </div>
+
       {/* ── Actions ── */}
       <div className="flex flex-wrap justify-between gap-3 pb-4">
         <div className="flex gap-2">
           <button type="button" onClick={clearForm} className="btn-secondary">
             {t('orders.clearForm')}
           </button>
-          <button type="button" onClick={exportExcel} className="btn-secondary">
+          <button type="button" onClick={handleExport} className="btn-secondary">
             📊 {t('orders.exportExcel')}
           </button>
         </div>

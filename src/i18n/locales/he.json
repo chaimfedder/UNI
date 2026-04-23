@@ -4,7 +4,7 @@
     "packing": "אריזה",
     "packingLists": "רשימות אריזה",
     "orderTracking": "מעקב הזמנות",
-    "invoices": "פפסה",
+    "invoices": "מלאי חומרי גלם",
     "logout": "התנתק",
     "title": "מערכת ניהול מפעל"
   },
@@ -86,7 +86,17 @@
     "ordersList": "רשימת הזמנות",
     "deleteConfirm": "האם למחוק הזמנה זו?",
     "deleteSuccess": "ההזמנה נמחקה",
-    "noOrders": "אין הזמנות"
+    "noOrders": "אין הזמנות",
+    "noModel": "יש להזין מודל",
+    "instructions": "הוראות",
+    "waTitle": "שליחת עדכון לוואטסאפ",
+    "waSendFilePrefix": "לשלוח את הקובץ",
+    "waSendGroupSuffix": "לקבוצת בדיקה?",
+    "waSkip": "דלג",
+    "waSend": "שלח",
+    "waSending": "שולח...",
+    "waSentSuccess": "ההודעה נשלחה לקבוצה",
+    "waError": "שגיאה בשליחה"
   },
   "packing": {
     "title": "מערכת אריזה",
@@ -140,7 +150,21 @@
     "found": "נמצאו",
     "notFound": "לא נמצאו",
     "syncedToFirebase": "הנתונים סונכרנו ל-Firebase",
-    "syncError": "שגיאת סנכרון ל-Firebase"
+    "syncError": "שגיאת סנכרון ל-Firebase",
+    "boxesToday": "קרטונים היום",
+    "boxesWeek": "קרטונים השבוע",
+    "openLists": "אריזות פתוחות",
+    "inProgress": "בעבודה",
+    "shippedLists": "אריזות שנשלחו",
+    "allTime": "מכל הזמן",
+    "recentBoxes": "קרטונים אחרונים שנארזו",
+    "packing": "אריזה",
+    "box": "קרטון",
+    "size": "גודל",
+    "items": "פריטים",
+    "time": "שעה",
+    "noData": "אין נתונים עדיין",
+    "boxes": "קרטונים"
   },
   "packingLists": {
     "title": "רשימות אריזה",
@@ -237,7 +261,27 @@
     "deleteRowConfirm": "למחוק שורה זו?",
     "extractError": "שגיאה בחילוץ נתונים",
     "saveError": "שגיאה בשמירה",
-    "noInvoiceNumber": "יש להזין מספר חשבונית"
+    "noInvoiceNumber": "יש להזין מספר חשבונית",
+    "viewInvoices": "תצוגת חשבוניות",
+    "viewMaterials": "תצוגת חומרי גלם"
+  },
+  "inventory": {
+    "rawMaterials": "חומרי גלם",
+    "materialSelector": "בחירת חומרי גלם",
+    "availableStock": "מלאי זמין",
+    "usedStock": "שימוש (OUT)",
+    "inStock": "כניסות (IN)",
+    "remaining": "נותר",
+    "selectedQty": "כמות נבחרת",
+    "afterSelection": "יתרה אחרי",
+    "selectedSummary": "חומרי גלם נבחרים",
+    "noMaterials": "לא נבחרו חומרי גלם להזמנה זו",
+    "noAvailableMaterials": "אין חומרי גלם זמינים — יש להוסיף חשבוניות",
+    "ordersUsed": "הזמנות ששמשו חומר זה",
+    "quantityTaken": "כמות שנלקחה",
+    "saveError": "שגיאה בשמירת תנועות מלאי",
+    "deleteError": "שגיאה במחיקת תנועות מלאי",
+    "selected": "נבחרו"
   },
   "common": {
     "save": "שמור",
@@ -261,6 +305,8 @@
     "status": "סטטוס",
     "notes": "הערות",
     "date": "תאריך",
-    "refresh": "רענן"
+    "refresh": "רענן",
+    "collapse": "כווץ",
+    "expand": "הרחב"
   }
 }

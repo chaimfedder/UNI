@@ -86,7 +86,17 @@
     "ordersList": "Lista Zamówień",
     "deleteConfirm": "Usunąć to zamówienie?",
     "deleteSuccess": "Zamówienie usunięte",
-    "noOrders": "Brak zamówień"
+    "noOrders": "Brak zamówień",
+    "noModel": "Wprowadź model",
+    "instructions": "Instrukcje",
+    "waTitle": "Wyślij Aktualizację WhatsApp",
+    "waSendFilePrefix": "Wyślij plik",
+    "waSendGroupSuffix": "do grupy testowej?",
+    "waSkip": "Pomiń",
+    "waSend": "Wyślij",
+    "waSending": "Wysyłanie...",
+    "waSentSuccess": "Wiadomość wysłana do grupy",
+    "waError": "Błąd wysyłania"
   },
   "packing": {
     "title": "System Pakowania",
@@ -140,7 +150,21 @@
     "found": "Znaleziono",
     "notFound": "Nie znaleziono",
     "syncedToFirebase": "Zsynchronizowano z Firebase",
-    "syncError": "Błąd synchronizacji Firebase"
+    "syncError": "Błąd synchronizacji Firebase",
+    "boxesToday": "Pudełka Dzisiaj",
+    "boxesWeek": "Pudełka w Tygodniu",
+    "openLists": "Otwarte Listy Pakowania",
+    "inProgress": "W toku",
+    "shippedLists": "Wysłane",
+    "allTime": "Łącznie",
+    "recentBoxes": "Ostatnio Spakowane Pudełka",
+    "packing": "Pakowanie",
+    "box": "Pudełko",
+    "size": "Rozmiar",
+    "items": "Przedmioty",
+    "time": "Godzina",
+    "noData": "Brak danych",
+    "boxes": "Pudełka"
   },
   "packingLists": {
     "title": "Listy Pakowania",
@@ -237,7 +261,27 @@
     "deleteRowConfirm": "Usunąć ten wiersz?",
     "extractError": "Błąd wyodrębniania",
     "saveError": "Błąd zapisu",
-    "noInvoiceNumber": "Wprowadź numer faktury"
+    "noInvoiceNumber": "Wprowadź numer faktury",
+    "viewInvoices": "Widok Faktur",
+    "viewMaterials": "Widok Materiałów"
+  },
+  "inventory": {
+    "rawMaterials": "Surowce",
+    "materialSelector": "Wybierz Surowce",
+    "availableStock": "Dostępny Magazyn",
+    "usedStock": "Użyte (OUT)",
+    "inStock": "Wejście (IN)",
+    "remaining": "Pozostało",
+    "selectedQty": "Wybrana ilość",
+    "afterSelection": "Po wyborze",
+    "selectedSummary": "Wybrane materiały",
+    "noMaterials": "Nie wybrano surowców dla tego zamówienia",
+    "noAvailableMaterials": "Brak surowców — dodaj faktury",
+    "ordersUsed": "Zamówienia używające tego materiału",
+    "quantityTaken": "Pobrana ilość",
+    "saveError": "Błąd zapisu ruchów magazynowych",
+    "deleteError": "Błąd usuwania ruchów magazynowych",
+    "selected": "wybrano"
   },
   "common": {
     "save": "Zapisz",
@@ -261,6 +305,8 @@
     "status": "Status",
     "notes": "Uwagi",
     "date": "Data",
-    "refresh": "Odśwież"
+    "refresh": "Odśwież",
+    "collapse": "Zwiń",
+    "expand": "Rozwiń"
   }
 }

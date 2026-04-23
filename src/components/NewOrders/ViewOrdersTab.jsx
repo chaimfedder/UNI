@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, query, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { exportOrderToExcel } from './exportOrderToExcel';
+import { exportOrderToExcel, exportToOriginalExcel } from './exportOrderToExcel';
+import { deleteOrderMovements, getOrderMovements } from '../../firebase/inventory';
 
 const SIZES = [51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63];
 
@@ -21,12 +22,11 @@ function statusBadge(status) {
 // ── Order detail modal ────────────────────────────────────────────────────────
 
 function OrderDetail({ order, onClose, onDelete }) {
-  const h = order.header || order; // fallback for older docs without header field
+  const h = order.header || order;
   const sizes = order.sizes || [];
   const specs = order.specs || {};
   const summary = order.summary || {};
 
-  // derive header fields for both storage formats
   const orderNumber   = h.orderNumber   || order.orderNumber   || order._id || '—';
   const model         = h.model         || order.model         || '—';
   const orderedBy     = h.orderedBy     || order.orderedBy     || '—';
@@ -36,14 +36,36 @@ function OrderDetail({ order, onClose, onDelete }) {
   const bodyOrder     = h.bodyOrder     || order.bodyOrder     || '—';
   const invoiceNumber = h.invoiceNumber || order.invoiceNumber || '—';
 
-  function handleExport() {
-    // Normalise to structure expected by exportOrderToExcel
+  const [materials, setMaterials] = useState([]);
+  const [matLoading, setMatLoading] = useState(true);
+
+  // Fetch this order's OUT movements when the modal opens
+  useEffect(() => {
+    let cancelled = false;
+    const id = order.orderNumber || order._id;
+    if (!id || id === '—') { setMatLoading(false); return; }
+    getOrderMovements(id).then(data => {
+      if (!cancelled) { setMaterials(data); setMatLoading(false); }
+    }).catch(() => { if (!cancelled) setMatLoading(false); });
+    return () => { cancelled = true; };
+  }, [order._id, order.orderNumber]);
+
+  async function handleExport() {
     const payload = {
       header: { orderNumber, model, orderedBy, orderDate, brand, bodyType, bodyOrder, invoiceNumber },
       sizes,
       specs,
       summary: summary.grandTotal != null ? summary : buildSummary(sizes),
+      materials,
     };
+    if (order.originalFile?.url) {
+      try {
+        await exportToOriginalExcel(payload, order.originalFile.url);
+        return;
+      } catch (err) {
+        console.warn('exportToOriginalExcel failed, falling back:', err);
+      }
+    }
     exportOrderToExcel(payload);
   }
 
@@ -190,6 +212,43 @@ function OrderDetail({ order, onClose, onDelete }) {
             </div>
           </div>
         )}
+
+        {/* Raw Materials used */}
+        <div className="px-5 pb-5">
+          <div className="rounded-xl border p-3" style={{ borderColor: '#E8C84A', backgroundColor: '#FFFBEB' }}>
+            <p className="text-xs font-semibold mb-2" style={{ color: '#7A5C20' }}>חומרי גלם בשימוש</p>
+            {matLoading ? (
+              <p className="text-xs text-gray-400">טוען…</p>
+            ) : materials.length === 0 ? (
+              <p className="text-xs text-gray-400">לא נבחרו חומרי גלם להזמנה זו</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr style={{ backgroundColor: '#F5F0E0' }}>
+                    <th className="px-2 py-1 text-right text-gray-500 font-semibold">סוג חומר</th>
+                    <th className="px-2 py-1 text-center text-gray-500 font-semibold">משקל</th>
+                    <th className="px-2 py-1 text-center text-gray-500 font-semibold">צבע</th>
+                    <th className="px-2 py-1 text-center text-gray-500 font-semibold">חשבונית</th>
+                    <th className="px-2 py-1 text-center text-gray-500 font-semibold">כמות</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {materials.map((m, i) => (
+                    <tr key={m._id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-2 py-1 font-medium" style={{ color: '#7A5C20' }}>{m.materialType || '—'}</td>
+                      <td className="px-2 py-1 text-center text-gray-600">{m.weight || '—'}</td>
+                      <td className="px-2 py-1 text-center text-gray-600">{m.color || '—'}</td>
+                      <td className="px-2 py-1 text-center text-gray-500">{m.invoiceNumber || '—'}</td>
+                      <td className="px-2 py-1 text-center font-semibold" style={{ color: '#A07830' }}>
+                        {m.quantity}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -206,6 +265,8 @@ export default function ViewOrdersTab() {
   async function deleteOrder(orderId, orderNumber) {
     if (!window.confirm(`למחוק הזמנה ${orderNumber || orderId}?`)) return;
     try {
+      // Delete movements first (query + batch), then delete the order document
+      await deleteOrderMovements(orderNumber || orderId);
       await deleteDoc(doc(db, 'orders', orderId));
       if (selected?._id === orderId) setSelected(null);
     } catch (err) {
@@ -217,7 +278,6 @@ export default function ViewOrdersTab() {
     const q = query(collection(db, 'orders'));
     const unsub = onSnapshot(q, snap => {
       const docs = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
-      // Sort newest first (by orderNumber numeric desc, fallback to _id)
       docs.sort((a, b) => {
         const na = parseInt(a.orderNumber || a._id) || 0;
         const nb = parseInt(b.orderNumber || b._id) || 0;
@@ -332,32 +392,20 @@ export default function ViewOrdersTab() {
                             )}
                             <button
                               className="btn-primary btn-sm"
-                              onClick={() => {
-                                const payload = {
-                                  header: {
-                                    orderNumber:   order.orderNumber   || order._id || '',
-                                    model:         order.model         || '',
-                                    orderedBy:     order.orderedBy     || '',
-                                    orderDate:     order.orderDate     || '',
-                                    brand:         order.brand         || '',
-                                    bodyType:      order.bodyType      || '',
-                                    bodyOrder:     order.bodyOrder     || '',
-                                    invoiceNumber: order.invoiceNumber || '',
-                                  },
-                                  sizes:   order.sizes   || [],
-                                  specs:   order.specs   || {},
-                                  summary: order.summary?.grandTotal != null
-                                    ? order.summary
-                                    : buildSummary(order.sizes || []),
-                                };
-                                exportOrderToExcel(payload);
+                              onClick={e => {
+                                e.stopPropagation();
+                                // Fetch materials then export — open detail for full export
+                                setSelected(order);
                               }}
                             >
                               📥 אקסל
                             </button>
                             <button
                               className="text-xs px-2 py-1 rounded bg-red-50 text-red-500 hover:bg-red-100 font-medium"
-                              onClick={() => deleteOrder(order._id, order.orderNumber || order._id)}
+                              onClick={e => {
+                                e.stopPropagation();
+                                deleteOrder(order._id, order.orderNumber || order._id);
+                              }}
                             >
                               🗑️
                             </button>

@@ -16,7 +16,7 @@ export default function Navbar() {
 
   return (
     <nav
-      className="border-b sticky top-0 z-50"
+      className="border-b sticky top-0 z-[100]"
       style={{ backgroundColor: '#111111', borderColor: '#2A2A2A' }}
     >
       <div className="max-w-screen-2xl mx-auto px-4">
